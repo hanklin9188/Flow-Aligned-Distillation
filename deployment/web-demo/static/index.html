@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Adaptive Exit 現場推論展示</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ON-DEVICE · LIVE INFERENCE</p>
+        <h1>Adaptive Exit 現場推論展示</h1>
+        <p class="subtitle">25% Adaptive Exit Student <span>vs.</span> Merged Teacher</p>
+      </div>
+      <output id="health" class="health health-loading" role="status" aria-live="polite">
+        <span class="health-dot"></span>
+        <span id="health-label">正在連線本機服務</span>
+      </output>
+    </header>
+
+    <section class="benchmark-context" aria-label="論文與本機測速方法">
+      <div class="benchmark-stat paper-stat">
+        <p>PAPER BENCHMARK</p>
+        <strong>1.39×</strong>
+        <span>H100 · 7 項 benchmark task-wise geomean speedup</span>
+      </div>
+      <div class="benchmark-divider" aria-hidden="true"></div>
+      <div class="benchmark-stat local-stat">
+        <p>LOCAL FAIR SPEED RACE</p>
+        <strong id="local-speedup">等待實測</strong>
+        <span id="local-protocol">各模型獨立暖機 · 交替順序 · 5 次取 median</span>
+      </div>
+      <div class="benchmark-method">
+        <span>✓ CUDA synchronized</span>
+        <span>✓ 排除 timing outlier</span>
+        <span>✓ 不含模型載入時間</span>
+      </div>
+    </section>
+
+    <section class="question-card" aria-labelledby="question-title">
+      <div class="question-toolbar">
+        <div class="draw-controls">
+          <label class="dataset-filter-label" for="dataset-filter">
+            <span>抽樣範圍</span>
+            <select id="dataset-filter" class="dataset-filter" aria-label="選擇隨機抽題資料集"></select>
+          </label>
+          <button id="draw-five" class="button dice-button" type="button">
+            <span class="dice-icon" aria-hidden="true">⚄</span>
+            隨機抽五題
+          </button>
+          <span id="draw-status" class="draw-status" role="status" aria-live="polite">準備完整測試題庫…</span>
+        </div>
+        <div class="question-counter"><span id="question-position">—</span> / 5</div>
+      </div>
+      <nav id="question-picker" class="question-picker" aria-label="本次隨機抽出的五題"></nav>
+
+      <div class="question-meta">
+        <span id="dataset-badge" class="badge badge-dataset">—</span>
+        <span id="sample-badge" class="badge">Sample —</span>
+        <span id="category-badge" class="badge badge-scenario">—</span>
+      </div>
+      <div class="question-copy">
+        <h2 id="question-title">正在載入題目…</h2>
+        <ol id="choices" class="choices" aria-label="選項"></ol>
+      </div>
+      <div class="historical-note">
+        <span class="note-icon" aria-hidden="true">🎲</span>
+        <span id="historical-note">從完整測試集均勻隨機抽樣，不依 Student／Teacher 歷史答對或答錯篩選。</span>
+      </div>
+    </section>
+
+    <div class="primary-actions">
+      <button id="run-both" class="button button-primary" type="button" disabled>
+        <span class="button-icon" aria-hidden="true">▶</span>
+        公平競速：兩個模型作答
+      </button>
+      <button id="clear-results" class="button button-quiet" type="button">清除結果</button>
+    </div>
+
+    <section class="model-stack" aria-label="模型作答比較">
+      <article id="student-card" class="model-card student-card">
+        <header class="model-header">
+          <div class="model-identity">
+            <span class="model-mark student-mark">S</span>
+            <div>
+              <p class="model-kicker">OUR METHOD</p>
+              <h2>Student · 25% Adaptive Exit</h2>
+            </div>
+          </div>
+          <span class="architecture-chip student-chip">Exit L16 / 20 / 24</span>
+        </header>
+        <div class="answer-row">
+          <output id="student-answer" class="answer-box" aria-live="polite">
+            <span class="answer-placeholder">等待作答</span>
+          </output>
+          <button id="run-student" class="button button-model student-button" type="button" disabled>
+            Student 作答
+          </button>
+        </div>
+        <footer id="student-metrics" class="metrics" aria-live="polite">
+          <span class="metric-empty">尚未執行推論</span>
+        </footer>
+        <section id="student-vram" class="vram-panel" aria-label="Student VRAM 使用量" hidden>
+          <div class="vram-heading">
+            <div>
+              <p>模型獨立張量 · MODEL-ONLY VRAM</p>
+              <strong id="student-vram-model">—</strong>
+            </div>
+            <span id="student-vram-percent">—</span>
+          </div>
+          <div class="vram-track"><div id="student-vram-bar" class="vram-fill student-vram-fill"></div></div>
+          <div class="vram-details">
+            <span>模型獨立張量，不含 Teacher</span>
+            <span>本題推論工作區峰值 <strong id="student-vram-extra">—</strong></span>
+          </div>
+        </section>
+      </article>
+
+      <article id="teacher-card" class="model-card teacher-card">
+        <header class="model-header">
+          <div class="model-identity">
+            <span class="model-mark teacher-mark">T</span>
+            <div>
+              <p class="model-kicker">REFERENCE MODEL</p>
+              <h2>Teacher · Merged Full Model</h2>
+            </div>
+          </div>
+          <span class="architecture-chip teacher-chip">Full 28 Layers</span>
+        </header>
+        <div class="answer-row">
+          <output id="teacher-answer" class="answer-box" aria-live="polite">
+            <span class="answer-placeholder">等待作答</span>
+          </output>
+          <button id="run-teacher" class="button button-model teacher-button" type="button" disabled>
+            Teacher 作答
+          </button>
+        </div>
+        <footer id="teacher-metrics" class="metrics" aria-live="polite">
+          <span class="metric-empty">尚未執行推論</span>
+        </footer>
+        <section id="teacher-vram" class="vram-panel" aria-label="Teacher VRAM 使用量" hidden>
+          <div class="vram-heading">
+            <div>
+              <p>模型獨立張量 · MODEL-ONLY VRAM</p>
+              <strong id="teacher-vram-model">—</strong>
+            </div>
+            <span id="teacher-vram-percent">—</span>
+          </div>
+          <div class="vram-track"><div id="teacher-vram-bar" class="vram-fill teacher-vram-fill"></div></div>
+          <div class="vram-details">
+            <span>模型獨立張量，不含 Student</span>
+            <span>本題推論工作區峰值 <strong id="teacher-vram-extra">—</strong></span>
+          </div>
+        </section>
+      </article>
+    </section>
+
+    <section id="shared-vram" class="shared-vram-panel" aria-label="兩個模型同時常駐的總 VRAM" hidden>
+      <div class="shared-vram-heading">
+        <div>
+          <p>SHARED LIVE DEMO SERVICE</p>
+          <h2>Student + Teacher 同時常駐</h2>
+        </div>
+        <div class="shared-vram-total">
+          <strong id="shared-vram-peak">—</strong>
+          <span id="shared-vram-percent">—</span>
+        </div>
+      </div>
+      <div class="vram-track shared-vram-track"><div id="shared-vram-bar" class="vram-fill shared-vram-fill"></div></div>
+      <div class="shared-vram-details">
+        <span>兩模型張量合計 <strong id="shared-vram-tensors">—</strong></span>
+        <span>服務常駐基準 <strong id="shared-vram-baseline">—</strong></span>
+        <span class="shared-vram-saving">Student 張量少 <strong id="shared-vram-saving">—</strong></span>
+      </div>
+      <p>為了讓兩個模型按下按鈕後立即公平競速，現場服務會同時把 Student 與 Teacher 留在同一張 GPU。</p>
+    </section>
+
+    <section id="comparison" class="comparison" aria-live="polite" hidden>
+      <div class="comparison-summary">
+        <div>
+          <p class="comparison-kicker">LIVE COMPARISON</p>
+          <h2 id="comparison-title">—</h2>
+          <p id="comparison-detail">—</p>
+        </div>
+        <div id="gold-answer" class="gold-answer">正確答案：—</div>
+      </div>
+      <div class="latency-chart" aria-label="兩個模型現場作答時間">
+        <div class="latency-row">
+          <span>Student</span>
+          <div class="bar-track"><div id="student-bar" class="bar student-bar"></div></div>
+          <strong id="student-bar-label">—</strong>
+        </div>
+        <div class="latency-row">
+          <span>Teacher</span>
+          <div class="bar-track"><div id="teacher-bar" class="bar teacher-bar"></div></div>
+          <strong id="teacher-bar-label">—</strong>
+        </div>
+      </div>
+      <p class="latency-caption">作答時間越短越好 · 各模型暖機後交替執行 5 次 · CUDA 同步 median latency</p>
+      <p class="vram-caption">模型卡顯示各自的獨立張量；兩模型同時常駐的整體 GPU 峰值顯示於共同區塊。</p>
+    </section>
+
+    <footer class="page-footer">
+      <span>Local/private inference · No external model API</span>
+      <span id="runtime-detail">等待服務資訊</span>
+    </footer>
+  </main>
+  <script id="question-catalog" type="application/json">__QUESTION_CATALOG_JSON__</script>
+  <script src="/app.js" defer></script>
+</body>
+</html>

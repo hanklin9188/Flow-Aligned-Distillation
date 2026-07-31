@@ -1,0 +1,7 @@
+design,compression_pct,macro_accuracy,aggregate_samples_per_s,task_geomean_samples_per_s,task_geomean_speedup_vs_teacher,aggregate_speedup_vs_teacher,comparison_contract
+Merged teacher,0,0.8229472649,55.8775717314,66.2859138470,1.0000000000,1.0000000000,same job; H100; batch size 1
+FLAP,25,0.6523273635,61.9223031097,69.8703378463,1.0540751993,,separate matched baseline runtime job
+Tyr-the-Pruner,25,0.7328457048,57.0694997513,68.2159521633,1.0291168697,,separate matched baseline runtime job
+LLM-Streamline,25,0.8189673086,75.2340736097,88.8974100884,1.3411206836,,separate matched baseline runtime job
+FAD static,25,0.8503251668,52.0585852337,60.2087976918,0.9083196444,0.9316543941,same job as teacher; H100; batch size 1
+FAD-AE,25,0.8493651652,81.8433115441,92.0233219425,1.3882786945,1.4646898390,same job as teacher; H100; batch size 1

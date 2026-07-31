@@ -1,0 +1,15 @@
+# Reference environment for the FAD and baseline adapters.
+# Install the three official baseline projects at their audited commits first;
+# their own lockfiles take precedence when they require narrower versions.
+torch>=2.6
+transformers>=4.49,<5
+accelerate>=1.2
+peft>=0.14
+datasets>=3.2
+numpy>=1.26
+scipy>=1.12
+safetensors>=0.5
+sentencepiece>=0.2
+tqdm>=4.66
+matplotlib>=3.8
+

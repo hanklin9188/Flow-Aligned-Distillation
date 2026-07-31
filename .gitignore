@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.log
+.DS_Store
+.venv/
+.env
+.cache/
+outputs/
+checkpoints/
+*.pt
+*.pth
+*.safetensors
+deployment/web-demo/models/*
+!deployment/web-demo/models/README.md
+

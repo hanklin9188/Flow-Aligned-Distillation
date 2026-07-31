@@ -1,0 +1,209 @@
+{
+  "total_questions": 19149,
+  "correctness_categories": {
+    "both_correct": {
+      "label_zh": "都答對",
+      "count": 15890,
+      "percentage": 82.98083450832942
+    },
+    "ours_only_correct": {
+      "label_zh": "只有我的版本答對",
+      "count": 1189,
+      "percentage": 6.209201524883806
+    },
+    "teacher_only_correct": {
+      "label_zh": "只有 teacher 答對",
+      "count": 836,
+      "percentage": 4.365763225233693
+    },
+    "both_wrong": {
+      "label_zh": "都答錯",
+      "count": 1234,
+      "percentage": 6.444200741553083
+    }
+  },
+  "ours_correct": 17079,
+  "teacher_correct": 16726,
+  "ours_accuracy": 0.8919003603321323,
+  "teacher_accuracy": 0.8734659773356311,
+  "ours_total_latency_sec": 232.6060782559216,
+  "teacher_total_latency_sec": 373.05269083660096,
+  "aggregate_speedup_vs_teacher": 1.6037959697087318,
+  "per_dataset": {
+    "piqa": {
+      "total_questions": 1838,
+      "correctness_categories": {
+        "both_correct": {
+          "label_zh": "都答對",
+          "count": 1443,
+          "percentage": 78.50924918389553
+        },
+        "ours_only_correct": {
+          "label_zh": "只有我的版本答對",
+          "count": 128,
+          "percentage": 6.9640914036996735
+        },
+        "teacher_only_correct": {
+          "label_zh": "只有 teacher 答對",
+          "count": 122,
+          "percentage": 6.637649619151252
+        },
+        "both_wrong": {
+          "label_zh": "都答錯",
+          "count": 145,
+          "percentage": 7.889009793253536
+        }
+      }
+    },
+    "social_i_qa": {
+      "total_questions": 1954,
+      "correctness_categories": {
+        "both_correct": {
+          "label_zh": "都答對",
+          "count": 1398,
+          "percentage": 71.54554759467759
+        },
+        "ours_only_correct": {
+          "label_zh": "只有我的版本答對",
+          "count": 153,
+          "percentage": 7.830092118730809
+        },
+        "teacher_only_correct": {
+          "label_zh": "只有 teacher 答對",
+          "count": 148,
+          "percentage": 7.574206755373592
+        },
+        "both_wrong": {
+          "label_zh": "都答錯",
+          "count": 255,
+          "percentage": 13.050153531218013
+        }
+      }
+    },
+    "hellaswag": {
+      "total_questions": 10042,
+      "correctness_categories": {
+        "both_correct": {
+          "label_zh": "都答對",
+          "count": 9034,
+          "percentage": 89.96215893248358
+        },
+        "ours_only_correct": {
+          "label_zh": "只有我的版本答對",
+          "count": 412,
+          "percentage": 4.102768372834097
+        },
+        "teacher_only_correct": {
+          "label_zh": "只有 teacher 答對",
+          "count": 288,
+          "percentage": 2.86795459071898
+        },
+        "both_wrong": {
+          "label_zh": "都答錯",
+          "count": 308,
+          "percentage": 3.0671181039633537
+        }
+      }
+    },
+    "winogrande": {
+      "total_questions": 1267,
+      "correctness_categories": {
+        "both_correct": {
+          "label_zh": "都答對",
+          "count": 982,
+          "percentage": 77.50591949486977
+        },
+        "ours_only_correct": {
+          "label_zh": "只有我的版本答對",
+          "count": 114,
+          "percentage": 8.997632202052092
+        },
+        "teacher_only_correct": {
+          "label_zh": "只有 teacher 答對",
+          "count": 49,
+          "percentage": 3.867403314917127
+        },
+        "both_wrong": {
+          "label_zh": "都答錯",
+          "count": 122,
+          "percentage": 9.62904498816101
+        }
+      }
+    },
+    "ARC-Challenge": {
+      "total_questions": 1172,
+      "correctness_categories": {
+        "both_correct": {
+          "label_zh": "都答對",
+          "count": 760,
+          "percentage": 64.84641638225256
+        },
+        "ours_only_correct": {
+          "label_zh": "只有我的版本答對",
+          "count": 144,
+          "percentage": 12.286689419795222
+        },
+        "teacher_only_correct": {
+          "label_zh": "只有 teacher 答對",
+          "count": 88,
+          "percentage": 7.508532423208191
+        },
+        "both_wrong": {
+          "label_zh": "都答錯",
+          "count": 180,
+          "percentage": 15.358361774744028
+        }
+      }
+    },
+    "ARC-Easy": {
+      "total_questions": 2376,
+      "correctness_categories": {
+        "both_correct": {
+          "label_zh": "都答對",
+          "count": 1901,
+          "percentage": 80.00841750841751
+        },
+        "ours_only_correct": {
+          "label_zh": "只有我的版本答對",
+          "count": 190,
+          "percentage": 7.9966329966329965
+        },
+        "teacher_only_correct": {
+          "label_zh": "只有 teacher 答對",
+          "count": 110,
+          "percentage": 4.62962962962963
+        },
+        "both_wrong": {
+          "label_zh": "都答錯",
+          "count": 175,
+          "percentage": 7.365319865319865
+        }
+      }
+    },
+    "openbookqa": {
+      "total_questions": 500,
+      "correctness_categories": {
+        "both_correct": {
+          "label_zh": "都答對",
+          "count": 372,
+          "percentage": 74.4
+        },
+        "ours_only_correct": {
+          "label_zh": "只有我的版本答對",
+          "count": 48,
+          "percentage": 9.6
+        },
+        "teacher_only_correct": {
+          "label_zh": "只有 teacher 答對",
+          "count": 31,
+          "percentage": 6.2
+        },
+        "both_wrong": {
+          "label_zh": "都答錯",
+          "count": 49,
+          "percentage": 9.8
+        }
+      }
+    }
+  }
+}

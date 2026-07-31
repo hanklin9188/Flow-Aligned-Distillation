@@ -1,0 +1,329 @@
+{
+  "type": "oracle_distilled_exit_policy",
+  "policy_kind": "oracle_distill",
+  "trained_on": "7task_train_calibration",
+  "feature_names": [
+    "entropy_norm",
+    "top_surprisal",
+    "js_from_prev",
+    "energy_gap"
+  ],
+  "feature_set": "useful4",
+  "model_type": "linear",
+  "architecture": {
+    "kind": "linear"
+  },
+  "weights": [
+    1.95476496219635,
+    -0.6607439517974854,
+    -0.2005009949207306,
+    4.490718841552734
+  ],
+  "bias": 2.327622175216675,
+  "mean": [
+    0.232423797249794,
+    0.11533597111701965,
+    0.0056249904446303844,
+    3.4276788234710693
+  ],
+  "std": [
+    0.24648703634738922,
+    0.19725298881530762,
+    0.022350840270519257,
+    1.8666304349899292
+  ],
+  "decision_threshold": 0.5,
+  "decision_threshold_source": "auto_calibration",
+  "auto_decision_objective": "speed_constrained",
+  "auto_accuracy_metric": "macro",
+  "decision_threshold_grid": [
+    0.5,
+    0.505,
+    0.51,
+    0.515,
+    0.52,
+    0.525,
+    0.53,
+    0.535,
+    0.54,
+    0.545,
+    0.55,
+    0.555,
+    0.56,
+    0.565,
+    0.57,
+    0.575,
+    0.58,
+    0.585,
+    0.59,
+    0.595,
+    0.6,
+    0.605,
+    0.61,
+    0.615,
+    0.62,
+    0.625,
+    0.63,
+    0.635,
+    0.64,
+    0.645,
+    0.65,
+    0.655,
+    0.66,
+    0.665,
+    0.67,
+    0.675,
+    0.68,
+    0.685,
+    0.69,
+    0.695,
+    0.7,
+    0.705,
+    0.71,
+    0.715,
+    0.72,
+    0.725,
+    0.73,
+    0.735,
+    0.74,
+    0.745,
+    0.75,
+    0.755,
+    0.76,
+    0.765,
+    0.77,
+    0.775,
+    0.78,
+    0.785,
+    0.79,
+    0.795,
+    0.8,
+    0.805,
+    0.81,
+    0.815,
+    0.82,
+    0.825,
+    0.83,
+    0.835,
+    0.84,
+    0.845,
+    0.85,
+    0.855,
+    0.86,
+    0.865,
+    0.87,
+    0.875,
+    0.88,
+    0.885,
+    0.89,
+    0.895,
+    0.9,
+    0.905,
+    0.91,
+    0.915,
+    0.92,
+    0.925,
+    0.93,
+    0.935,
+    0.94,
+    0.945,
+    0.95,
+    0.955,
+    0.96,
+    0.965,
+    0.97,
+    0.975,
+    0.98,
+    0.985,
+    0.99,
+    0.995
+  ],
+  "auto_max_acc_drop": 0.005,
+  "validation_fraction": 0.25,
+  "calibration_split_counts": {
+    "ARC-Challenge": {
+      "train": 750,
+      "validation": 250
+    },
+    "ARC-Easy": {
+      "train": 750,
+      "validation": 250
+    },
+    "hellaswag": {
+      "train": 750,
+      "validation": 250
+    },
+    "openbookqa": {
+      "train": 750,
+      "validation": 250
+    },
+    "piqa": {
+      "train": 750,
+      "validation": 250
+    },
+    "social_i_qa": {
+      "train": 750,
+      "validation": 250
+    },
+    "winogrande": {
+      "train": 750,
+      "validation": 250
+    }
+  },
+  "threshold_selection_records": 1750,
+  "min_exit_layer": 16,
+  "teacher_oracle_thresholds_by_dataset": {
+    "ARC-Challenge": 0.5,
+    "ARC-Easy": 0.955,
+    "hellaswag": 0.5,
+    "openbookqa": 0.53,
+    "piqa": 0.63,
+    "social_i_qa": 0.645,
+    "winogrande": 0.5
+  },
+  "teacher_oracle_metrics_by_dataset": {
+    "ARC-Challenge": {
+      "threshold": 0.5,
+      "accuracy": 0.9133333333333333,
+      "full_accuracy": 0.9106666666666666,
+      "avg_exit_layer": 16.373333333333335,
+      "estimated_layer_savings": 0.4152380952380952,
+      "exit_layer_hist": {
+        "16": 696,
+        "20": 40,
+        "24": 12,
+        "28": 2
+      }
+    },
+    "ARC-Easy": {
+      "threshold": 0.955,
+      "accuracy": 0.964,
+      "full_accuracy": 0.964,
+      "avg_exit_layer": 18.224,
+      "estimated_layer_savings": 0.3491428571428571,
+      "exit_layer_hist": {
+        "16": 448,
+        "20": 224,
+        "24": 41,
+        "28": 37
+      }
+    },
+    "hellaswag": {
+      "threshold": 0.5,
+      "accuracy": 0.9853333333333333,
+      "full_accuracy": 0.9866666666666667,
+      "avg_exit_layer": 16.053333333333335,
+      "estimated_layer_savings": 0.42666666666666664,
+      "exit_layer_hist": {
+        "16": 742,
+        "20": 7,
+        "28": 1
+      }
+    },
+    "openbookqa": {
+      "threshold": 0.53,
+      "accuracy": 0.952,
+      "full_accuracy": 0.9533333333333334,
+      "avg_exit_layer": 16.32,
+      "estimated_layer_savings": 0.41714285714285715,
+      "exit_layer_hist": {
+        "16": 711,
+        "20": 24,
+        "24": 9,
+        "28": 6
+      }
+    },
+    "piqa": {
+      "threshold": 0.63,
+      "accuracy": 0.9586666666666667,
+      "full_accuracy": 0.96,
+      "avg_exit_layer": 16.138666666666666,
+      "estimated_layer_savings": 0.4236190476190477,
+      "exit_layer_hist": {
+        "16": 737,
+        "20": 4,
+        "24": 5,
+        "28": 4
+      }
+    },
+    "social_i_qa": {
+      "threshold": 0.645,
+      "accuracy": 0.9266666666666666,
+      "full_accuracy": 0.928,
+      "avg_exit_layer": 16.469333333333335,
+      "estimated_layer_savings": 0.41180952380952374,
+      "exit_layer_hist": {
+        "16": 696,
+        "20": 31,
+        "24": 12,
+        "28": 11
+      }
+    },
+    "winogrande": {
+      "threshold": 0.5,
+      "accuracy": 0.9893333333333333,
+      "full_accuracy": 0.9893333333333333,
+      "avg_exit_layer": 16.0,
+      "estimated_layer_savings": 0.4285714285714286,
+      "exit_layer_hist": {
+        "16": 750
+      }
+    }
+  },
+  "train_policy_examples": 5860,
+  "train_classifier_accuracy": 0.8244027495384216,
+  "calibration_simulation": {
+    "samples": 1750,
+    "accuracy": 0.9554285714285714,
+    "oracle_accuracy": 0.9537142857142857,
+    "full_accuracy": 0.956,
+    "avg_exit_layer": 17.337142857142858,
+    "estimated_layer_savings": 0.38081632653061226,
+    "exit_layer_hist": {
+      "16": 1371,
+      "20": 247,
+      "24": 58,
+      "28": 74
+    },
+    "macro_accuracy": 0.9554285714285714,
+    "full_macro_accuracy": 0.9560000000000001,
+    "per_dataset": {
+      "ARC-Challenge": {
+        "samples": 250,
+        "accuracy": 0.932,
+        "full_accuracy": 0.932
+      },
+      "ARC-Easy": {
+        "samples": 250,
+        "accuracy": 0.964,
+        "full_accuracy": 0.964
+      },
+      "hellaswag": {
+        "samples": 250,
+        "accuracy": 0.968,
+        "full_accuracy": 0.968
+      },
+      "openbookqa": {
+        "samples": 250,
+        "accuracy": 0.932,
+        "full_accuracy": 0.932
+      },
+      "piqa": {
+        "samples": 250,
+        "accuracy": 0.976,
+        "full_accuracy": 0.976
+      },
+      "social_i_qa": {
+        "samples": 250,
+        "accuracy": 0.928,
+        "full_accuracy": 0.928
+      },
+      "winogrande": {
+        "samples": 250,
+        "accuracy": 0.988,
+        "full_accuracy": 0.992
+      }
+    }
+  },
+  "decision_sweep_csv": "source://local-results/adaptive_exit_budget_s44_heldout_macro_20260717_192135/budget20_k19/policy/oracle_distilled_policy_decision_sweep.csv"
+}

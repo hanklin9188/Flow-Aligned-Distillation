@@ -1,0 +1,177 @@
+{
+  "model_variant": "phase1_5",
+  "phase_modules_applied": {
+    "phase1_5": true
+  },
+  "quant_eval": {
+    "requested": false,
+    "enabled": false,
+    "available_count": 0,
+    "applied_count": 0,
+    "missing_count": 0,
+    "missing_keys": []
+  },
+  "shared_diagnostics": {
+    "layer_count": 28,
+    "per_layer": [
+      {
+        "layer": 0,
+        "proto_id": 2,
+        "lora_rank": 128
+      },
+      {
+        "layer": 1,
+        "proto_id": 3,
+        "lora_rank": 128
+      },
+      {
+        "layer": 2,
+        "proto_id": 4,
+        "lora_rank": 128
+      },
+      {
+        "layer": 3,
+        "proto_id": 5,
+        "lora_rank": 128
+      },
+      {
+        "layer": 4,
+        "proto_id": 6,
+        "lora_rank": 128
+      },
+      {
+        "layer": 5,
+        "proto_id": 7,
+        "lora_rank": 128
+      },
+      {
+        "layer": 6,
+        "proto_id": 8,
+        "lora_rank": 128
+      },
+      {
+        "layer": 7,
+        "proto_id": 9,
+        "lora_rank": 128
+      },
+      {
+        "layer": 8,
+        "proto_id": 10,
+        "lora_rank": 128
+      },
+      {
+        "layer": 9,
+        "proto_id": 11,
+        "lora_rank": 128
+      },
+      {
+        "layer": 10,
+        "proto_id": 12,
+        "lora_rank": 128
+      },
+      {
+        "layer": 11,
+        "proto_id": 13,
+        "lora_rank": 128
+      },
+      {
+        "layer": 12,
+        "proto_id": 14,
+        "lora_rank": 128
+      },
+      {
+        "layer": 13,
+        "proto_id": 15,
+        "lora_rank": 128
+      },
+      {
+        "layer": 14,
+        "proto_id": 16,
+        "lora_rank": 128
+      },
+      {
+        "layer": 15,
+        "proto_id": 17,
+        "lora_rank": 128
+      },
+      {
+        "layer": 16,
+        "proto_id": 0,
+        "lora_rank": 128
+      },
+      {
+        "layer": 17,
+        "proto_id": 0,
+        "lora_rank": 128
+      },
+      {
+        "layer": 18,
+        "proto_id": 0,
+        "lora_rank": 128
+      },
+      {
+        "layer": 19,
+        "proto_id": 1,
+        "lora_rank": 128
+      },
+      {
+        "layer": 20,
+        "proto_id": 1,
+        "lora_rank": 128
+      },
+      {
+        "layer": 21,
+        "proto_id": 1,
+        "lora_rank": 128
+      },
+      {
+        "layer": 22,
+        "proto_id": 1,
+        "lora_rank": 128
+      },
+      {
+        "layer": 23,
+        "proto_id": 1,
+        "lora_rank": 128
+      },
+      {
+        "layer": 24,
+        "proto_id": 1,
+        "lora_rank": 128
+      },
+      {
+        "layer": 25,
+        "proto_id": 1,
+        "lora_rank": 128
+      },
+      {
+        "layer": 26,
+        "proto_id": 1,
+        "lora_rank": 128
+      },
+      {
+        "layer": 27,
+        "proto_id": 18,
+        "lora_rank": 128
+      }
+    ]
+  },
+  "dataset": "winogrande",
+  "eval_mode": "logprob",
+  "length_norm": "none",
+  "samples": 1267,
+  "source_samples": 1267,
+  "world_size": 4,
+  "accuracy": 0.8674033149171271,
+  "elapsed_sec": 5.801339321769774,
+  "measured_samples": 1267,
+  "throughput_warmup_samples": 0,
+  "samples_per_s": 218.39784396777625,
+  "throughput_toks_per_s": 41846.88854330632,
+  "forward_tokens": 242768,
+  "forward_calls": 1267,
+  "pred_dist": {
+    "option1": 600,
+    "option2": 667
+  }
+}

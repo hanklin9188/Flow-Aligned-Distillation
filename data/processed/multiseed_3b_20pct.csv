@@ -1,0 +1,5 @@
+method,seeds,macro_mean,macro_sample_std,notes
+FLAP,"42;43;44",0.6803,0.0033,task-fair reruns
+Tyr-the-Pruner,"42;43;44",0.7542,0.0111,task-fair reruns
+LLM-Streamline,"42;43;44",0.8164,0.0016,task-fair reruns
+FAD,"42;43;44",0.8270,0.0030,paper-designated three-seed suite; latest seed-44 budget model is separately reported as 0.8566

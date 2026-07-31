@@ -1,0 +1,5 @@
+compression_pct,prototypes,static_macro_accuracy,adaptive_macro_accuracy,delta_pp,average_exit_layer,layer_saving_pct,speedup_vs_own_full,exit_layer_16_pct,exit_layer_20_pct,exit_layer_24_pct,exit_layer_28_pct,controller_threshold,safe_within_0_5pp
+15,22,0.8538185602,0.8541150178,0.0418,17.3162,38.1564,1.4858,80.80,9.46,5.77,3.97,0.50,true
+20,19,0.8566311967,0.8552604181,-0.1357,18.1566,35.1551,1.3991,66.79,20.15,5.41,7.65,0.50,true
+25,17,0.8503251668,0.8493651652,-0.0960,16.3877,41.4725,1.5734,93.50,4.18,1.43,0.88,0.50,true
+30,15,0.8319922406,0.8288964509,-0.3096,17.1639,38.7003,1.4877,84.61,7.05,3.00,5.35,0.50,true

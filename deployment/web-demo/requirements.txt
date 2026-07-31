@@ -1,0 +1,6 @@
+torch>=2.6,<3
+transformers>=4.55,<6
+safetensors>=0.5,<1
+numpy>=1.26,<3
+tqdm>=4.66,<5
+matplotlib>=3.8,<4

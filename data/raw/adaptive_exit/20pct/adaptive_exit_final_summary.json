@@ -1,0 +1,196 @@
+{
+  "controller": {
+    "kind": "four_input_one_output_linear_sigmoid",
+    "feature_names": [
+      "entropy_norm",
+      "top_surprisal",
+      "js_from_prev",
+      "energy_gap"
+    ],
+    "decision_threshold": 0.5,
+    "train_policy_examples": 5860,
+    "calibration_simulation": {
+      "samples": 1750,
+      "accuracy": 0.9554285714285714,
+      "oracle_accuracy": 0.9537142857142857,
+      "full_accuracy": 0.956,
+      "avg_exit_layer": 17.337142857142858,
+      "estimated_layer_savings": 0.38081632653061226,
+      "exit_layer_hist": {
+        "16": 1371,
+        "20": 247,
+        "24": 58,
+        "28": 74
+      },
+      "macro_accuracy": 0.9554285714285714,
+      "full_macro_accuracy": 0.9560000000000001,
+      "per_dataset": {
+        "ARC-Challenge": {
+          "samples": 250,
+          "accuracy": 0.932,
+          "full_accuracy": 0.932
+        },
+        "ARC-Easy": {
+          "samples": 250,
+          "accuracy": 0.964,
+          "full_accuracy": 0.964
+        },
+        "hellaswag": {
+          "samples": 250,
+          "accuracy": 0.968,
+          "full_accuracy": 0.968
+        },
+        "openbookqa": {
+          "samples": 250,
+          "accuracy": 0.932,
+          "full_accuracy": 0.932
+        },
+        "piqa": {
+          "samples": 250,
+          "accuracy": 0.976,
+          "full_accuracy": 0.976
+        },
+        "social_i_qa": {
+          "samples": 250,
+          "accuracy": 0.928,
+          "full_accuracy": 0.928
+        },
+        "winogrande": {
+          "samples": 250,
+          "accuracy": 0.988,
+          "full_accuracy": 0.992
+        }
+      }
+    }
+  },
+  "runtime_test": {
+    "datasets": [
+      "piqa",
+      "social_i_qa",
+      "hellaswag",
+      "winogrande",
+      "ARC-Challenge",
+      "ARC-Easy",
+      "openbookqa"
+    ],
+    "samples": 19149,
+    "static_phase1_5_macro_accuracy": 0.8566311966675808,
+    "paired_full_runtime_macro_accuracy": 0.8566169707023491,
+    "adaptive_exit_macro_accuracy": 0.8552604180846234,
+    "macro_accuracy_delta_vs_paired_full": -0.0013565526177257148,
+    "paired_full_weighted_accuracy": 0.8980625620136822,
+    "adaptive_exit_weighted_accuracy": 0.8973836753877487,
+    "weighted_accuracy_delta_vs_paired_full": -0.0006788866259334691,
+    "weighted_avg_exit_layer": 18.156561700349886,
+    "weighted_estimated_layer_savings": 0.3515513678446469,
+    "aggregate_wall_clock_speedup_vs_full": 1.3990753829654585,
+    "full_elapsed_sec": 382.0177682945505,
+    "adaptive_exit_elapsed_sec": 273.05016795080155,
+    "paper_safe_at_0p5pp_macro_drop": true,
+    "per_dataset": {
+      "piqa": {
+        "full_accuracy": 0.8639825897714908,
+        "adaptive_exit_accuracy": 0.8628944504896626,
+        "accuracy_delta": -0.0010881392818281599,
+        "avg_exit_layer": 16.409140369967357,
+        "estimated_layer_savings": 0.4139592725011658,
+        "wall_clock_speedup_vs_full": 1.5726532763274441,
+        "exit_layer_hist": {
+          "16": 1729,
+          "20": 57,
+          "24": 25,
+          "28": 27
+        }
+      },
+      "social_i_qa": {
+        "full_accuracy": 0.7998976458546572,
+        "adaptive_exit_accuracy": 0.7998976458546572,
+        "accuracy_delta": 0.0,
+        "avg_exit_layer": 19.34493346980553,
+        "estimated_layer_savings": 0.30910951893551686,
+        "wall_clock_speedup_vs_full": 1.2721631602137087,
+        "exit_layer_hist": {
+          "16": 1172,
+          "20": 289,
+          "24": 134,
+          "28": 359
+        }
+      },
+      "hellaswag": {
+        "full_accuracy": 0.9458275243975304,
+        "adaptive_exit_accuracy": 0.945628360884286,
+        "accuracy_delta": -0.00019916351324433812,
+        "avg_exit_layer": 17.885680143397728,
+        "estimated_layer_savings": 0.3612257091643668,
+        "wall_clock_speedup_vs_full": 1.435683826476307,
+        "exit_layer_hist": {
+          "16": 6647,
+          "20": 2529,
+          "24": 393,
+          "28": 473
+        }
+      },
+      "winogrande": {
+        "full_accuracy": 0.8674033149171271,
+        "adaptive_exit_accuracy": 0.8579321231254933,
+        "accuracy_delta": -0.009471191791633804,
+        "avg_exit_layer": 16.322020520915547,
+        "estimated_layer_savings": 0.4170706956815876,
+        "wall_clock_speedup_vs_full": 1.5315283682351482,
+        "exit_layer_hist": {
+          "16": 1183,
+          "20": 70,
+          "24": 10,
+          "28": 4
+        }
+      },
+      "ARC-Challenge": {
+        "full_accuracy": 0.7824232081911263,
+        "adaptive_exit_accuracy": 0.7824232081911263,
+        "accuracy_delta": 0.0,
+        "avg_exit_layer": 20.69283276450512,
+        "estimated_layer_savings": 0.26097025841053145,
+        "wall_clock_speedup_vs_full": 1.1871809010730858,
+        "exit_layer_hist": {
+          "16": 483,
+          "20": 260,
+          "24": 172,
+          "28": 257
+        }
+      },
+      "ARC-Easy": {
+        "full_accuracy": 0.8867845117845118,
+        "adaptive_exit_accuracy": 0.8880471380471381,
+        "accuracy_delta": 0.0012626262626262985,
+        "avg_exit_layer": 19.084175084175083,
+        "estimated_layer_savings": 0.3184223184223185,
+        "wall_clock_speedup_vs_full": 1.2931979702213832,
+        "exit_layer_hist": {
+          "16": 1327,
+          "20": 543,
+          "24": 229,
+          "28": 277
+        }
+      },
+      "openbookqa": {
+        "full_accuracy": 0.85,
+        "adaptive_exit_accuracy": 0.85,
+        "accuracy_delta": 0.0,
+        "avg_exit_layer": 19.672,
+        "estimated_layer_savings": 0.2974285714285714,
+        "wall_clock_speedup_vs_full": 1.2548471181995797,
+        "exit_layer_hist": {
+          "16": 249,
+          "20": 111,
+          "24": 72,
+          "28": 68
+        }
+      }
+    }
+  },
+  "artifacts": {
+    "policy_json": "source://local-results/adaptive_exit_budget_s44_heldout_macro_20260717_192135/budget20_k19/policy/oracle_distilled_exit_policy.json",
+    "runtime_report_json": "source://local-results/adaptive_exit_budget_s44_heldout_macro_20260717_192135/budget20_k19/runtime_7task/runtime_confidence_exit_all_report.json",
+    "runtime_summary_csv": "source://local-results/adaptive_exit_budget_s44_heldout_macro_20260717_192135/budget20_k19/runtime_7task/runtime_confidence_exit_summary.csv"
+  }
+}

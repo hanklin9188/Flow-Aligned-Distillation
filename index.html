@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Flow-Aligned Distillation: shared-FFN LLM compression and calibrated adaptive exit.">
+  <meta name="theme-color" content="#10151c">
+  <title>FAD — Flow-Aligned Distillation</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="FAD home"><span class="brand-mark">F</span><span>Flow-Aligned Distillation</span></a>
+    <nav aria-label="Primary navigation"><a href="#results">Results</a><a href="#method">Method</a><a href="#deployment">Deployment</a><a href="#reproduce">Reproduce</a></nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="Toggle color theme">◐</button>
+  </header>
+
+  <main id="main">
+    <section id="top" class="hero section-shell">
+      <div class="hero-copy reveal">
+        <div class="eyebrow"><span class="pulse"></span> Research portfolio · audited 31 Jul 2026</div>
+        <h1>Compress the weights.<br><em>Preserve the flow.</em></h1>
+        <p class="lede">FAD shares redundant feed-forward networks while aligning the student's layer-wise residual transport to a teacher-derived information geometry. A calibrated adaptive-exit controller then spends depth only where a question needs it.</p>
+        <div class="hero-actions"><a class="button primary" href="#results">Explore the evidence <span>↘</span></a><a class="button secondary" href="https://github.com/hanklin9188/FAD-Portfolio">View source ↗</a></div>
+        <div class="hero-note"><span>01</span> Llama‑3.2‑3B · seven-task zero-shot evaluation · H100 runtime</div>
+      </div>
+      <div class="hero-visual reveal">
+        <div class="visual-frame"><div class="visual-label"><span>Teacher</span><span>transport geometry</span></div><img src="assets/figures/main.png" alt="Teacher and shared-FFN student connected through the FAD transport-alignment objective"></div>
+        <div class="floating-chip chip-a">28 → 17 FFNs</div><div class="floating-chip chip-b">exits 16·20·24</div>
+      </div>
+    </section>
+
+    <section class="metric-strip" aria-label="Headline results">
+      <article><span class="metric-kicker">Best static</span><strong>85.66<small>%</small></strong><p>20% compression</p></article>
+      <article><span class="metric-kicker">25% FAD-AE</span><strong>84.94<small>%</small></strong><p>−0.10 pp vs static</p></article>
+      <article><span class="metric-kicker">Aggregate speed</span><strong>1.465<small>×</small></strong><p>vs merged teacher</p></article>
+      <article><span class="metric-kicker">Executed depth</span><strong>16.39<small>/28</small></strong><p>41.47% layer saving</p></article>
+    </section>
+
+    <section id="results" class="section-shell section-block">
+      <div class="section-heading reveal"><span class="section-number">02 / Results</span><h2>One model family,<br>four operating points.</h2><p>The selected seed‑44 checkpoints are the latest restricted-late runs. Switch budgets to inspect static and adaptive performance, prototype count and exit behavior.</p></div>
+      <div class="budget-dashboard reveal">
+        <div class="budget-tabs" role="tablist" aria-label="Compression budget"><button role="tab" data-budget="15">15%</button><button role="tab" data-budget="20">20%</button><button role="tab" data-budget="25" aria-selected="true">25%</button><button role="tab" data-budget="30">30%</button></div>
+        <div class="budget-grid">
+          <div class="budget-score"><span id="budget-label">25% compression</span><strong id="static-score">85.03%</strong><p>static macro accuracy</p><div class="score-delta"><span id="ae-score">84.94%</span> with adaptive exit</div></div>
+          <div class="budget-facts"><div><span>Unique FFNs</span><strong id="prototype-count">17 / 28</strong></div><div><span>Average exit</span><strong id="average-layer">16.39</strong></div><div><span>Own-full speedup</span><strong id="own-speedup">1.573×</strong></div><div><span>Accuracy Δ</span><strong id="accuracy-delta">−0.10 pp</strong></div></div>
+          <div class="exit-panel"><span class="mini-label">Exit distribution</span><div id="exit-bars" class="exit-bars" aria-label="Exit layer distribution"></div></div>
+        </div>
+      </div>
+      <div class="chart-card reveal"><div class="chart-copy"><span class="mini-label">Accuracy frontier</span><h3>FAD stays above the merged teacher across all four budgets.</h3><p>Latest selected static and adaptive checkpoints; macro-average over seven tasks.</p></div><div id="budget-chart" class="chart" role="img" aria-label="Static and adaptive FAD accuracy across four compression budgets"></div></div>
+      <div class="comparison-wrap reveal">
+        <div class="table-intro"><span class="mini-label">Reproduced comparison</span><h3>Against three structured-compression papers</h3></div>
+        <div class="table-scroll"><table><thead><tr><th>Method</th><th>15%</th><th>20%</th><th>25%</th><th>30%</th></tr></thead><tbody><tr><th>FLAP</th><td>70.59</td><td>68.00</td><td>63.89</td><td>57.87</td></tr><tr><th>Týr-the-Pruner</th><td>79.30</td><td>76.16</td><td>72.71</td><td>64.54</td></tr><tr><th>LLM-Streamline</th><td>81.29</td><td>81.82</td><td>81.25</td><td>81.12</td></tr><tr class="highlight"><th>FAD · latest</th><td>85.38</td><td>85.66</td><td>85.03</td><td>83.20</td></tr></tbody></table></div>
+        <p class="audit-note"><strong>Protocol audit:</strong> current FAD artifacts record <code>length_norm=none</code>; archived baseline wrappers defaulted to <code>avg</code> and did not persist the field. The repository preserves the reported results, while new public wrappers standardize future reruns to <code>none</code>.</p>
+      </div>
+    </section>
+
+    <section id="method" class="method-section section-block"><div class="section-shell">
+      <div class="section-heading light reveal"><span class="section-number">03 / Method</span><h2>From redundant layers<br>to reusable functions.</h2></div>
+      <div class="method-grid"><article class="method-card reveal"><span>01</span><h3>Observe transport</h3><p>Hook the teacher's post-attention FFN residual update at the last prediction token. This local velocity is the behavior FAD preserves.</p></article><article class="method-card reveal"><span>02</span><h3>Build geometry</h3><p>Project transport into a shared velocity-PCA basis and estimate layer-wise teacher covariance. Low-variance directions receive stronger penalties.</p></article><article class="method-card reveal"><span>03</span><h3>Share by function</h3><p>A hard FFN-input gate plus held-out functional complete-link clustering selects a restricted late-layer sharing policy.</p></article><article class="method-card reveal"><span>04</span><h3>Recover & exit</h3><p>Train with decision CE + whitened point CORE. At inference, a four-feature controller chooses layers 16, 20, 24 or the full layer 28.</p></article></div>
+      <figure class="wide-figure reveal"><img src="assets/figures/information_energy_flow.png" alt="Teacher and student trajectories in the information-energy projection space"><figcaption>Information energy makes deviations comparable across teacher transport directions.</figcaption></figure>
+    </div></section>
+
+    <section id="deployment" class="section-shell section-block">
+      <div class="section-heading reveal"><span class="section-number">04 / Deployment</span><h2>Static portfolio.<br>Real GPU demo.</h2><p>GitHub Pages presents the research without a backend. The included inference service mounts licensed checkpoints on a CUDA host and compares the 25% adaptive student with its merged teacher.</p></div>
+      <div class="deploy-grid reveal"><div class="deploy-flow"><div class="node browser"><span>01</span><strong>Browser</strong><small>offline UI</small></div><i>→</i><div class="node server"><span>02</span><strong>Python service</strong><small>GPU lock + scorer</small></div><i>→</i><div class="node models"><span>03</span><strong>Two models</strong><small>student + teacher</small></div></div><div class="deploy-stats"><div><span>Paired questions</span><strong>19,149</strong></div><div><span>Student-only wins</span><strong>1,189</strong></div><div><span>Teacher-only wins</span><strong>836</strong></div><div><span>Student net advantage</span><strong>+353</strong></div></div></div>
+      <div class="runtime-callout reveal"><img src="assets/figures/runtime_pareto_25p.png" alt="Runtime Pareto plot for teacher, baselines, static FAD and FAD-AE"><div><span class="mini-label">Metric clarity</span><h3>1.465× aggregate, 1.388× task-wise geomean.</h3><p>Both values come from the same H100 batch‑1 job. The first divides total throughput; the second geometrically averages seven per-task speed ratios. The data card stores both.</p><a href="deployment/README.md">Read the deployment guide →</a></div></div>
+    </section>
+
+    <section class="gallery-section section-block"><div class="section-shell"><div class="section-heading reveal"><span class="section-number">05 / Visual evidence</span><h2>The research,<br>made inspectable.</h2></div><div class="gallery"><figure class="gallery-main reveal"><img src="assets/figures/adaptive_exit.png" alt="Adaptive exit architecture"><figcaption><strong>Adaptive exit</strong><span>calibrated depth allocation</span></figcaption></figure><figure class="reveal"><img src="assets/figures/budget_curve_3b.png" alt="Compression budget curve for FAD and baselines"><figcaption><strong>Budget curve</strong><span>accuracy vs compression</span></figcaption></figure><figure class="reveal"><img src="assets/figures/teacher_scale_inv_std_heatmap.png" alt="Teacher inverse standard deviation heatmap"><figcaption><strong>Teacher metric</strong><span>directional precision</span></figcaption></figure><figure class="reveal"><img src="assets/figures/adaptive_exit_layer_distribution_overall.png" alt="Overall adaptive exit layer distribution"><figcaption><strong>Exit behavior</strong><span>where compute stops</span></figcaption></figure></div></div></section>
+
+    <section id="reproduce" class="reproduce-section section-block"><div class="section-shell reproduce-grid">
+      <div class="section-heading light reveal"><span class="section-number">06 / Reproduce</span><h2>Every number has<br>a path back to code.</h2><p>Raw evaluator artifacts, compact CSVs, controller JSON, baseline adapters, exact pipeline snapshots and portable Slurm wrappers live together.</p></div>
+      <div class="code-window reveal"><div class="code-title"><span></span><span></span><span></span><small>terminal</small></div><pre><code><span>$</span> export FAD_WORKSPACE_ROOT=/scratch/fad
+<span>$</span> export FAD_TEACHER_CKPT=/models/teacher
+<span>$</span> export FAD_CANONICAL_ROOT=/artifacts/atlas
+<span>$</span> bash reproduction/fad/scripts/run_all_budgets.sh
+
+<span>$</span> export FAD_DEPLOY_BUNDLE=/artifacts/25pct/deploy_bundle.pt
+<span>$</span> bash reproduction/fad/scripts/run_adaptive_exit_budget.sh 25</code></pre></div>
+      <div class="resource-links reveal"><a href="docs/RESULTS.md"><span>Results &amp; provenance</span><b>→</b></a><a href="reproduction/README.md"><span>Reproduction guide</span><b>→</b></a><a href="docs/FILE_GUIDE.md"><span>File-by-file map</span><b>→</b></a><a href="data/processed/static_budget_results.csv"><span>Download result CSV</span><b>↓</b></a></div>
+    </div></section>
+  </main>
+  <footer><div><span class="brand-mark">F</span><p>Flow-Aligned Distillation<br><small>Research portfolio by Hank Lin</small></p></div><div><a href="https://github.com/hanklin9188">GitHub ↗</a><a href="#top">Back to top ↑</a></div></footer>
+  <script src="app.js"></script>
+</body>
+</html>

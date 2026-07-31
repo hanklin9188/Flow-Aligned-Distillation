@@ -1,0 +1,460 @@
+{
+  "title": "25% Adaptive Exit Student vs. Merged Teacher",
+  "source_report": "data/raw/adaptive_exit/paired_question_summary.json",
+  "selection_rule": "Top five stable positive teacher-minus-student CUDA-synchronized H100 latency gaps in each correctness category; single-question speedups above 3.0x are excluded as outliers.",
+  "paper_benchmark": {
+    "hardware": "NVIDIA H100 80GB HBM3",
+    "questions": 19149,
+    "batch_size": 1,
+    "latency_measurement": "CUDA-synchronized steady-state wall clock",
+    "student_total_latency_sec": 232.6060782559216,
+    "teacher_total_latency_sec": 373.05269083660096,
+    "aggregate_speedup": 1.6037959697087318,
+    "student_accuracy": 0.8919003603321323,
+    "teacher_accuracy": 0.8734659773356311
+  },
+  "categories": [
+    {
+      "id": "ours_only_correct",
+      "label_zh": "Student 答對・Teacher 答錯",
+      "count": 5
+    },
+    {
+      "id": "both_correct",
+      "label_zh": "Student 與 Teacher 都答對",
+      "count": 5
+    }
+  ],
+  "questions": [
+    {
+      "id": "hellaswag:7130",
+      "dataset": "hellaswag",
+      "sample_id": 7130,
+      "category": "ours_only_correct",
+      "category_zh": "Student 答對・Teacher 答錯",
+      "category_rank": 1,
+      "instruction": "Please choose the correct ending to complete the given sentence: Family Life: [header] How to be loved by your family [title] Talk to family members with whom you're experiencing problems. [step] Talking about the problems in an attempt to clear things out will help you to better identify the actual problem as perceived by the family members in question and can get all of you started on making amends. [title] Ask someone who is neutral in any dispute to arbitrate.\n\nEnding1: [step] A neutral person has an opportunity to assess each family member's side of the argument and decides who can resolve the situation. [substeps] Send your family members to a mediator to discuss a possible solution. Ending2: [step] If you don't know anyone in the family and have at least a friend or acquaintance with you, your people should remain neutral in any dispute or disagreement. [title] Let your spouse/partner know exactly how you want to be loved. Ending3: [step] If they are very neutral in your family, this may help diffuse the situation and minimize a potentially confrontational discussion. [title] Offer to set up a meeting with an impartial neutral friend and probably the mediator. Ending4: [step] They can act as the go-between and come up with suggestions for moving ahead on impasses. [title] Realize that in some cases, people are wedded to their hardship or self-piteous story of things.\n\nAnswer format: ending1/ending2/ending3/ending4",
+      "input": "",
+      "display_stem": "Please choose the correct ending to complete the given sentence: Family Life: How to be loved by your family Talk to family members with whom you're experiencing problems. Talking about the problems in an attempt to clear things out will help you to better identify the actual problem as perceived by the family members in question and can get all of you started on making amends. Ask someone who is neutral in any dispute to arbitrate.",
+      "choices": [
+        {
+          "label": "ending1",
+          "text": "A neutral person has an opportunity to assess each family member's side of the argument and decides who can resolve the situation. Send your family members to a mediator to discuss a possible solution."
+        },
+        {
+          "label": "ending2",
+          "text": "If you don't know anyone in the family and have at least a friend or acquaintance with you, your people should remain neutral in any dispute or disagreement. Let your spouse/partner know exactly how you want to be loved."
+        },
+        {
+          "label": "ending3",
+          "text": "If they are very neutral in your family, this may help diffuse the situation and minimize a potentially confrontational discussion. Offer to set up a meeting with an impartial neutral friend and probably the mediator."
+        },
+        {
+          "label": "ending4",
+          "text": "They can act as the go-between and come up with suggestions for moving ahead on impasses. Realize that in some cases, people are wedded to their hardship or self-piteous story of things."
+        }
+      ],
+      "gold_answer": "ending4",
+      "historical": {
+        "ours_prediction": "ending4",
+        "teacher_prediction": "ending1",
+        "ours_correct": true,
+        "teacher_correct": false,
+        "ours_latency_ms": 17.0572716742754,
+        "teacher_latency_ms": 28.418438509106636,
+        "time_saved_ms": 11.361166834831238,
+        "speedup_vs_teacher": 1.666060027171014,
+        "ours_exit_layer": 16,
+        "teacher_exit_layer": 28
+      },
+      "historical_timing_outlier": false
+    },
+    {
+      "id": "hellaswag:3802",
+      "dataset": "hellaswag",
+      "sample_id": 3802,
+      "category": "ours_only_correct",
+      "category_zh": "Student 答對・Teacher 答錯",
+      "category_rank": 2,
+      "instruction": "Please choose the correct ending to complete the given sentence: Family Life: [header] How to travel by plane with an infant or toddler [title] Use an approved restraint if possible. [step] Lap travel, while legal for children under 2 years of age, is much less safe than traveling in an approved seat. The faa recommends that all children use a restraint on board from birth to 40 pounds.\n\nEnding1: [title] Use a seatbelt if you are traveling over distances of less than 4 1/2 meters. [step] Less than 4 , 000 feet (8 , 260 m) can cause significant harm to an infant or toddler. Ending2: Although each airline has additional regulations regarding proper safety precautions, these regulations can be handled by the faa. [substeps] The faa requires that all passengers be licensed, tested, and insured, from the age of 10 to 17, for at least a year. Ending3: For all states, even though safety restrictions may be in place, you should still consult the faa before making your trip. The americans with disabilities act of 1967 prohibits children under the age of 14 from dangerous activity. Ending4: It also comes in handy because you can attach toys or pictures to the top, a mirror to the side, and a pillow to the back for comfort while sleeping. [substeps] However, in europe, australia, asia, the use of a lap belt onboard is normal and approved by their safety regulations.\n\nAnswer format: ending1/ending2/ending3/ending4",
+      "input": "",
+      "display_stem": "Please choose the correct ending to complete the given sentence: Family Life: How to travel by plane with an infant or toddler Use an approved restraint if possible. Lap travel, while legal for children under 2 years of age, is much less safe than traveling in an approved seat. The faa recommends that all children use a restraint on board from birth to 40 pounds.",
+      "choices": [
+        {
+          "label": "ending1",
+          "text": "Use a seatbelt if you are traveling over distances of less than 4 1/2 meters. Less than 4 , 000 feet (8 , 260 m) can cause significant harm to an infant or toddler."
+        },
+        {
+          "label": "ending2",
+          "text": "Although each airline has additional regulations regarding proper safety precautions, these regulations can be handled by the faa. The faa requires that all passengers be licensed, tested, and insured, from the age of 10 to 17, for at least a year."
+        },
+        {
+          "label": "ending3",
+          "text": "For all states, even though safety restrictions may be in place, you should still consult the faa before making your trip. The americans with disabilities act of 1967 prohibits children under the age of 14 from dangerous activity."
+        },
+        {
+          "label": "ending4",
+          "text": "It also comes in handy because you can attach toys or pictures to the top, a mirror to the side, and a pillow to the back for comfort while sleeping. However, in europe, australia, asia, the use of a lap belt onboard is normal and approved by their safety regulations."
+        }
+      ],
+      "gold_answer": "ending4",
+      "historical": {
+        "ours_prediction": "ending4",
+        "teacher_prediction": "ending1",
+        "ours_correct": true,
+        "teacher_correct": false,
+        "ours_latency_ms": 17.43621751666069,
+        "teacher_latency_ms": 28.76218594610691,
+        "time_saved_ms": 11.32596842944622,
+        "speedup_vs_teacher": 1.6495656766511433,
+        "ours_exit_layer": 16,
+        "teacher_exit_layer": 28
+      },
+      "historical_timing_outlier": false
+    },
+    {
+      "id": "hellaswag:5407",
+      "dataset": "hellaswag",
+      "sample_id": 5407,
+      "category": "ours_only_correct",
+      "category_zh": "Student 答對・Teacher 答錯",
+      "category_rank": 3,
+      "instruction": "Please choose the correct ending to complete the given sentence: Home and Garden: [header] How to measure gutters [title] Find the width of the gutters. [step] Gutters typically come in 5 or 6 in (13 or 15 cm) sizes, and can be \" k-style \" or \" half-round. \" place a sturdy 20 ft (6.1 m) ladder on 1 side of your house so that you can reach the gutters.\n\nEnding1: Use a chart or pencil to measure across the roof's width from one end of the roof to the other. [substeps] Even if your roof is shielded with 2-piece shingles, this is still the width of the gutter. Ending2: Carefully climb up the ladder and measure the width of the opening at the top of the gutters. [substeps] K-style gutters are l-shaped on the back, while the front has step-like increments. Ending3: If your house is a half-round home, you can also set up a ladder in each corner of your home. [substeps] Alternatively, you can rent a home inspection kit that can give you measurements with minimal effort, like a float of pins. Ending4: Have a friend observe you from a distance to make sure you make sure the gutters aren't too short. [substeps] If you don't feel comfortable with these measurements, have a friend hold the ladder steady for you.\n\nAnswer format: ending1/ending2/ending3/ending4",
+      "input": "",
+      "display_stem": "Please choose the correct ending to complete the given sentence: Home and Garden: How to measure gutters Find the width of the gutters. Gutters typically come in 5 or 6 in (13 or 15 cm) sizes, and can be \" k-style \" or \" half-round. \" place a sturdy 20 ft (6.1 m) ladder on 1 side of your house so that you can reach the gutters.",
+      "choices": [
+        {
+          "label": "ending1",
+          "text": "Use a chart or pencil to measure across the roof's width from one end of the roof to the other. Even if your roof is shielded with 2-piece shingles, this is still the width of the gutter."
+        },
+        {
+          "label": "ending2",
+          "text": "Carefully climb up the ladder and measure the width of the opening at the top of the gutters. K-style gutters are l-shaped on the back, while the front has step-like increments."
+        },
+        {
+          "label": "ending3",
+          "text": "If your house is a half-round home, you can also set up a ladder in each corner of your home. Alternatively, you can rent a home inspection kit that can give you measurements with minimal effort, like a float of pins."
+        },
+        {
+          "label": "ending4",
+          "text": "Have a friend observe you from a distance to make sure you make sure the gutters aren't too short. If you don't feel comfortable with these measurements, have a friend hold the ladder steady for you."
+        }
+      ],
+      "gold_answer": "ending2",
+      "historical": {
+        "ours_prediction": "ending2",
+        "teacher_prediction": "ending1",
+        "ours_correct": true,
+        "teacher_correct": false,
+        "ours_latency_ms": 17.152797430753708,
+        "teacher_latency_ms": 28.28799467533827,
+        "time_saved_ms": 11.13519724458456,
+        "speedup_vs_teacher": 1.6491767473811572,
+        "ours_exit_layer": 16,
+        "teacher_exit_layer": 28
+      },
+      "historical_timing_outlier": false
+    },
+    {
+      "id": "hellaswag:7357",
+      "dataset": "hellaswag",
+      "sample_id": 7357,
+      "category": "ours_only_correct",
+      "category_zh": "Student 答對・Teacher 答錯",
+      "category_rank": 4,
+      "instruction": "Please choose the correct ending to complete the given sentence: Home and Garden: [header] How to reduce your fall risk with exercise [title] Talk to your doctor and a physical therapist. [step] When you are deciding to start an exercise program, you should talk to your doctor and/or a physical therapist about your plans. This is particularly important if you have mobility issues or trouble with physical activity, as your doctor can help you determine what is safe for you.\n\nEnding1: No matter what your physical fitness level is, you can be more active and get on a program to strengthen your body. A physical therapist can help you come up with an exercise plan to help reduce your risk of falling. Ending2: [substeps] Your physical therapist may also be able to suggest other exercise programs that you could try. If you want to start a new exercise program, discuss the options the therapist has expressed with you. Ending3: You may also want to consider home safety measures before starting the program. Taking steps to make sure your home is not subjected to any hazards can be a great way to improve your health and minimize the risk of falling at any point in your exercising regimen. Ending4: [substeps] The therapist can help you define your fitness goals and form a plan that will be convenient for you while you exercise. The physical therapist can help you describe your exercises to her and other physical therapists so that they can give you guidance.\n\nAnswer format: ending1/ending2/ending3/ending4",
+      "input": "",
+      "display_stem": "Please choose the correct ending to complete the given sentence: Home and Garden: How to reduce your fall risk with exercise Talk to your doctor and a physical therapist. When you are deciding to start an exercise program, you should talk to your doctor and/or a physical therapist about your plans. This is particularly important if you have mobility issues or trouble with physical activity, as your doctor can help you determine what is safe for you.",
+      "choices": [
+        {
+          "label": "ending1",
+          "text": "No matter what your physical fitness level is, you can be more active and get on a program to strengthen your body. A physical therapist can help you come up with an exercise plan to help reduce your risk of falling."
+        },
+        {
+          "label": "ending2",
+          "text": "Your physical therapist may also be able to suggest other exercise programs that you could try. If you want to start a new exercise program, discuss the options the therapist has expressed with you."
+        },
+        {
+          "label": "ending3",
+          "text": "You may also want to consider home safety measures before starting the program. Taking steps to make sure your home is not subjected to any hazards can be a great way to improve your health and minimize the risk of falling at any point in your exercising regimen."
+        },
+        {
+          "label": "ending4",
+          "text": "The therapist can help you define your fitness goals and form a plan that will be convenient for you while you exercise. The physical therapist can help you describe your exercises to her and other physical therapists so that they can give you guidance."
+        }
+      ],
+      "gold_answer": "ending1",
+      "historical": {
+        "ours_prediction": "ending1",
+        "teacher_prediction": "ending3",
+        "ours_correct": true,
+        "teacher_correct": false,
+        "ours_latency_ms": 17.01284945011139,
+        "teacher_latency_ms": 28.08234840631485,
+        "time_saved_ms": 11.06949895620346,
+        "speedup_vs_teacher": 1.6506551996867864,
+        "ours_exit_layer": 16,
+        "teacher_exit_layer": 28
+      },
+      "historical_timing_outlier": false
+    },
+    {
+      "id": "hellaswag:7912",
+      "dataset": "hellaswag",
+      "sample_id": 7912,
+      "category": "ours_only_correct",
+      "category_zh": "Student 答對・Teacher 答錯",
+      "category_rank": 5,
+      "instruction": "Please choose the correct ending to complete the given sentence: Youth: [header] How to dress casually [title] Avoid clothes that are too tight. [step] You don't have to wear clothes that are super-baggy, but tight-fitting clothes can make you look uncomfortable, defeating the purpose of casual wear. [substeps] Form-fitting dresses or tight pants are more suitable for a night at the club than a casual day spent relaxing.\n\nEnding1: Additionally, try to wear clothes that are designed for casual outdoor activities. For example, a dress without shirts can look ideal in an air conditioned parking lot, while a shirt without a jacket will look a bit inappropriate indoors. Ending2: Clothes which are highly structured, such as garments with stiff collars or strong shoulders, usually come across as dressy. [title] Slip on your favorite comfy jeans. Ending3: Go for a two-piece dress that hugs you in at least your waist, accentuates your sex appeal and offers some padding to your butt and hips. Solid black fabrics instead of dark denim are more appropriate for light, casual compression clothing. Ending4: Just make sure they are not tight enough that they slide up on your legs, or that they don't hang down too high on your belly button. Choose a bottom that you like and avoid material that will cinch at your waist.\n\nAnswer format: ending1/ending2/ending3/ending4",
+      "input": "",
+      "display_stem": "Please choose the correct ending to complete the given sentence: Youth: How to dress casually Avoid clothes that are too tight. You don't have to wear clothes that are super-baggy, but tight-fitting clothes can make you look uncomfortable, defeating the purpose of casual wear. Form-fitting dresses or tight pants are more suitable for a night at the club than a casual day spent relaxing.",
+      "choices": [
+        {
+          "label": "ending1",
+          "text": "Additionally, try to wear clothes that are designed for casual outdoor activities. For example, a dress without shirts can look ideal in an air conditioned parking lot, while a shirt without a jacket will look a bit inappropriate indoors."
+        },
+        {
+          "label": "ending2",
+          "text": "Clothes which are highly structured, such as garments with stiff collars or strong shoulders, usually come across as dressy. Slip on your favorite comfy jeans."
+        },
+        {
+          "label": "ending3",
+          "text": "Go for a two-piece dress that hugs you in at least your waist, accentuates your sex appeal and offers some padding to your butt and hips. Solid black fabrics instead of dark denim are more appropriate for light, casual compression clothing."
+        },
+        {
+          "label": "ending4",
+          "text": "Just make sure they are not tight enough that they slide up on your legs, or that they don't hang down too high on your belly button. Choose a bottom that you like and avoid material that will cinch at your waist."
+        }
+      ],
+      "gold_answer": "ending2",
+      "historical": {
+        "ours_prediction": "ending2",
+        "teacher_prediction": "ending4",
+        "ours_correct": true,
+        "teacher_correct": false,
+        "ours_latency_ms": 15.406555496156216,
+        "teacher_latency_ms": 25.942353531718254,
+        "time_saved_ms": 10.535798035562038,
+        "speedup_vs_teacher": 1.6838516265488814,
+        "ours_exit_layer": 16,
+        "teacher_exit_layer": 28
+      },
+      "historical_timing_outlier": false
+    },
+    {
+      "id": "hellaswag:4691",
+      "dataset": "hellaswag",
+      "sample_id": 4691,
+      "category": "both_correct",
+      "category_zh": "Student 與 Teacher 都答對",
+      "category_rank": 1,
+      "instruction": "Please choose the correct ending to complete the given sentence: Health: [header] How to increase alertness [title] Get enough sleep at night. [step] Good sleep is the single most important factor in increasing alertness. Although the amount each person requires varies, the national sleep foundation suggests 8 to 10 hours a night for teenagers and 7 to 9 hours for adults.\n\nEnding1: [substeps] The majority of adults need 13 or more hours a night for a minimum of 13 nights. It is recommended that teens (8 or 9 months) get 11 to 15 hours every night for the first 2 days of the week, in addition to 8 to 12 hours every night for the first four days. Ending2: Young adults under age 65 (or older) should aim for seven to nine hours of quality sleep that's not more than eight hours per night. [substeps] Adults ages 47 or older need 8.5 to 12 hours of sleep each night, and older people over 65 need 9 to 12 hours of quality sleep each night. Ending3: To get better sleep, create healthy sleep habits for yourself, such as not using a mobile device within an hour of bedtime or reading for a little bit before going to sleep every night. [substeps] If you're struggling to get an adequate amount of sleep every night, a power nap can help you recharge during the day. Ending4: The teen sleeping pattern, the period, and the seven day cycle in which teenagers sleep only 10 to 12 hours a night (5 to 8 hours a day) are considered sleep apnea (sleep paralysis). [substeps] It is recommended that teenagers sleep on a slept-in mattress, in order to improve their quality of sleep.\n\nAnswer format: ending1/ending2/ending3/ending4",
+      "input": "",
+      "display_stem": "Please choose the correct ending to complete the given sentence: Health: How to increase alertness Get enough sleep at night. Good sleep is the single most important factor in increasing alertness. Although the amount each person requires varies, the national sleep foundation suggests 8 to 10 hours a night for teenagers and 7 to 9 hours for adults.",
+      "choices": [
+        {
+          "label": "ending1",
+          "text": "The majority of adults need 13 or more hours a night for a minimum of 13 nights. It is recommended that teens (8 or 9 months) get 11 to 15 hours every night for the first 2 days of the week, in addition to 8 to 12 hours every night for the first four days."
+        },
+        {
+          "label": "ending2",
+          "text": "Young adults under age 65 (or older) should aim for seven to nine hours of quality sleep that's not more than eight hours per night. Adults ages 47 or older need 8.5 to 12 hours of sleep each night, and older people over 65 need 9 to 12 hours of quality sleep each night."
+        },
+        {
+          "label": "ending3",
+          "text": "To get better sleep, create healthy sleep habits for yourself, such as not using a mobile device within an hour of bedtime or reading for a little bit before going to sleep every night. If you're struggling to get an adequate amount of sleep every night, a power nap can help you recharge during the day."
+        },
+        {
+          "label": "ending4",
+          "text": "The teen sleeping pattern, the period, and the seven day cycle in which teenagers sleep only 10 to 12 hours a night (5 to 8 hours a day) are considered sleep apnea (sleep paralysis). It is recommended that teenagers sleep on a slept-in mattress, in order to improve their quality of sleep."
+        }
+      ],
+      "gold_answer": "ending3",
+      "historical": {
+        "ours_prediction": "ending3",
+        "teacher_prediction": "ending3",
+        "ours_correct": true,
+        "teacher_correct": true,
+        "ours_latency_ms": 19.084942527115345,
+        "teacher_latency_ms": 32.08420053124428,
+        "time_saved_ms": 12.999258004128933,
+        "speedup_vs_teacher": 1.681126389857342,
+        "ours_exit_layer": 16,
+        "teacher_exit_layer": 28
+      },
+      "historical_timing_outlier": false
+    },
+    {
+      "id": "hellaswag:4773",
+      "dataset": "hellaswag",
+      "sample_id": 4773,
+      "category": "both_correct",
+      "category_zh": "Student 與 Teacher 都答對",
+      "category_rank": 2,
+      "instruction": "Please choose the correct ending to complete the given sentence: Personal Care and Style: [header] How to make a garter [title] Choose the color and texture for the garter. [step] This pattern uses wide ribbon, making it easy to put the garter together. You'll need to decide what color is suitable and the texture of the ribbon.\n\nEnding1: You can choose all sorts of different colors or different textures, but you should choose a piece that will go well with your dress. [substeps] Stripes, stripes, and chevrons are common, so choose a length that matches the length of your dress to protect the ribbons from cracking and fading. Ending2: [substeps] For example, a black garter with a colorful lace lining will be a great option for a wedding, as it would likely tie an extra girdle at the garter. A bolder striped garter will look best with an orange red velvet lining, which you can attach to the garter. Ending3: [substeps] If it's for a wedding, the ribbon should probably be satin or velvet, although any quality ribbon will be ideal. As for color, this could be themed with an outfit, it could be blue for the \" something blue \" in a wedding or it might be cream or beige, which is neutral enough to go with any outfit. Ending4: [substeps] In the search box, type in the color and texture of the garter and bow type (abcbre) for each stitch. For example, if you're making stripes for a royal blue garter belt, select the color of the ribbon 3-4 rows of stitches at a time, followed by the color and texture of the ribbon.\n\nAnswer format: ending1/ending2/ending3/ending4",
+      "input": "",
+      "display_stem": "Please choose the correct ending to complete the given sentence: Personal Care and Style: How to make a garter Choose the color and texture for the garter. This pattern uses wide ribbon, making it easy to put the garter together. You'll need to decide what color is suitable and the texture of the ribbon.",
+      "choices": [
+        {
+          "label": "ending1",
+          "text": "You can choose all sorts of different colors or different textures, but you should choose a piece that will go well with your dress. Stripes, stripes, and chevrons are common, so choose a length that matches the length of your dress to protect the ribbons from cracking and fading."
+        },
+        {
+          "label": "ending2",
+          "text": "For example, a black garter with a colorful lace lining will be a great option for a wedding, as it would likely tie an extra girdle at the garter. A bolder striped garter will look best with an orange red velvet lining, which you can attach to the garter."
+        },
+        {
+          "label": "ending3",
+          "text": "If it's for a wedding, the ribbon should probably be satin or velvet, although any quality ribbon will be ideal. As for color, this could be themed with an outfit, it could be blue for the \" something blue \" in a wedding or it might be cream or beige, which is neutral enough to go with any outfit."
+        },
+        {
+          "label": "ending4",
+          "text": "In the search box, type in the color and texture of the garter and bow type (abcbre) for each stitch. For example, if you're making stripes for a royal blue garter belt, select the color of the ribbon 3-4 rows of stitches at a time, followed by the color and texture of the ribbon."
+        }
+      ],
+      "gold_answer": "ending3",
+      "historical": {
+        "ours_prediction": "ending3",
+        "teacher_prediction": "ending3",
+        "ours_correct": true,
+        "teacher_correct": true,
+        "ours_latency_ms": 18.837996758520603,
+        "teacher_latency_ms": 31.022507697343826,
+        "time_saved_ms": 12.184510938823223,
+        "speedup_vs_teacher": 1.6468050236452054,
+        "ours_exit_layer": 16,
+        "teacher_exit_layer": 28
+      },
+      "historical_timing_outlier": false
+    },
+    {
+      "id": "hellaswag:9356",
+      "dataset": "hellaswag",
+      "sample_id": 9356,
+      "category": "both_correct",
+      "category_zh": "Student 與 Teacher 都答對",
+      "category_rank": 3,
+      "instruction": "Please choose the correct ending to complete the given sentence: Pets and Animals: [header] How to involve your kids in selecting a dog [title] Bring up the possibility of getting a dog. [step] For most kids the idea of getting a dog will be very exciting. Bring the issue up with your kids when they have time to get excited, ask questions, and generally freak out.\n\nEnding1: Keep in mind that they may not be the most excited about the concept of having a dog, so it is important that you discuss the possibility with them a little bit before you. [substeps] For example, if you have your kids go shopping with a pet, they will probably say \" i want a dog. Ending2: You could say \" we are thinking about getting a dog. What do think about that idea? \" [substeps] During that initial conversation you should bring up what your kids will have to do to care for the dog if they agree to get one. Ending3: When the kids are getting excited about picking a dog, talk it over so they can be ready for anything. [substeps] You can pick a puppy, or puppies, and realize you are still just under 10 years old and don't really understand the complexity of adopting. Ending4: Keep it clear with your kids that the notion of owning a dog is not a complete myth. [substeps] Instead of saying \" if you can't afford a dog, but you're still willing to try one, why not give it a try? \" let your kids know that the idea of a dog is exciting.\n\nAnswer format: ending1/ending2/ending3/ending4",
+      "input": "",
+      "display_stem": "Please choose the correct ending to complete the given sentence: Pets and Animals: How to involve your kids in selecting a dog Bring up the possibility of getting a dog. For most kids the idea of getting a dog will be very exciting. Bring the issue up with your kids when they have time to get excited, ask questions, and generally freak out.",
+      "choices": [
+        {
+          "label": "ending1",
+          "text": "Keep in mind that they may not be the most excited about the concept of having a dog, so it is important that you discuss the possibility with them a little bit before you. For example, if you have your kids go shopping with a pet, they will probably say \" i want a dog."
+        },
+        {
+          "label": "ending2",
+          "text": "You could say \" we are thinking about getting a dog. What do think about that idea? \" During that initial conversation you should bring up what your kids will have to do to care for the dog if they agree to get one."
+        },
+        {
+          "label": "ending3",
+          "text": "When the kids are getting excited about picking a dog, talk it over so they can be ready for anything. You can pick a puppy, or puppies, and realize you are still just under 10 years old and don't really understand the complexity of adopting."
+        },
+        {
+          "label": "ending4",
+          "text": "Keep it clear with your kids that the notion of owning a dog is not a complete myth. Instead of saying \" if you can't afford a dog, but you're still willing to try one, why not give it a try? \" let your kids know that the idea of a dog is exciting."
+        }
+      ],
+      "gold_answer": "ending2",
+      "historical": {
+        "ours_prediction": "ending2",
+        "teacher_prediction": "ending2",
+        "ours_correct": true,
+        "teacher_correct": true,
+        "ours_latency_ms": 17.76811759918928,
+        "teacher_latency_ms": 29.655836522579193,
+        "time_saved_ms": 11.887718923389912,
+        "speedup_vs_teacher": 1.6690477399773807,
+        "ours_exit_layer": 16,
+        "teacher_exit_layer": 28
+      },
+      "historical_timing_outlier": false
+    },
+    {
+      "id": "hellaswag:5408",
+      "dataset": "hellaswag",
+      "sample_id": 5408,
+      "category": "both_correct",
+      "category_zh": "Student 與 Teacher 都答對",
+      "category_rank": 4,
+      "instruction": "Please choose the correct ending to complete the given sentence: Home and Garden: [header] How to install a kitchen backsplash [title] Get all of your supplies. [step] Installing a traditional tile backsplash in your kitchen requires several different items. Make sure you are fully prepared before starting your project.\n\nEnding1: You will need : [substeps] A cover sheet a counter top [title] Remove all of the tiles from the front wall, once you have chosen your backsplash. [step] This is because brick and other other built-in surfaces will require a foot-tall backsplash to work on. Ending2: You need everything you'll need to begin, so make sure you're on site and knowledgeable in the area you'll be installing the backsplash. [substeps] You'll need a set of water-soluble concrete blocks, solvent (sold at hardware stores), wood planks, board, and brick. Ending3: You'll need the following items : [substeps] Floor brackets place mats or rope roofing nails caulk pipe primer [title] Install the backsplash on a small, sturdy, non-suicidal surface. [step] If your backsplash is large, like a stove or a living room, it's best to cover the ground where the backsplash would go. Ending4: [substeps] The materials you need to have prepared before you begin include your tile, tile adhesive, and grout. Make sure you have the necessary tools, including a notched trowel, tape measure, sponge, level, utility knife, and a tile cutter.\n\nAnswer format: ending1/ending2/ending3/ending4",
+      "input": "",
+      "display_stem": "Please choose the correct ending to complete the given sentence: Home and Garden: How to install a kitchen backsplash Get all of your supplies. Installing a traditional tile backsplash in your kitchen requires several different items. Make sure you are fully prepared before starting your project.",
+      "choices": [
+        {
+          "label": "ending1",
+          "text": "You will need : A cover sheet a counter top Remove all of the tiles from the front wall, once you have chosen your backsplash. This is because brick and other other built-in surfaces will require a foot-tall backsplash to work on."
+        },
+        {
+          "label": "ending2",
+          "text": "You need everything you'll need to begin, so make sure you're on site and knowledgeable in the area you'll be installing the backsplash. You'll need a set of water-soluble concrete blocks, solvent (sold at hardware stores), wood planks, board, and brick."
+        },
+        {
+          "label": "ending3",
+          "text": "You'll need the following items : Floor brackets place mats or rope roofing nails caulk pipe primer Install the backsplash on a small, sturdy, non-suicidal surface. If your backsplash is large, like a stove or a living room, it's best to cover the ground where the backsplash would go."
+        },
+        {
+          "label": "ending4",
+          "text": "The materials you need to have prepared before you begin include your tile, tile adhesive, and grout. Make sure you have the necessary tools, including a notched trowel, tape measure, sponge, level, utility knife, and a tile cutter."
+        }
+      ],
+      "gold_answer": "ending4",
+      "historical": {
+        "ours_prediction": "ending4",
+        "teacher_prediction": "ending4",
+        "ours_correct": true,
+        "teacher_correct": true,
+        "ours_latency_ms": 17.92188547551632,
+        "teacher_latency_ms": 29.79498077183962,
+        "time_saved_ms": 11.8730952963233,
+        "speedup_vs_teacher": 1.6624914165724096,
+        "ours_exit_layer": 16,
+        "teacher_exit_layer": 28
+      },
+      "historical_timing_outlier": false
+    },
+    {
+      "id": "hellaswag:8086",
+      "dataset": "hellaswag",
+      "sample_id": 8086,
+      "category": "both_correct",
+      "category_zh": "Student 與 Teacher 都答對",
+      "category_rank": 5,
+      "instruction": "Please choose the correct ending to complete the given sentence: Finance and Business: [header] How to buy a house with friends [title] Determine what the agreement will cover. [step] A partnership agreement is a legal contract entered into when a group of individuals go in together on a joint venture. In this situation, the joint venture is buying a home.\n\nEnding1: The partnership agreement will dictate how you and your friends will be required to interact when it comes to purchasing and living in the home. While you and your friends can agree to almost anything, if you fail to address certain issues, state laws (usually called uniform partnership acts) will fill in the blanks for you. Ending2: [substeps] A joint venture allows a large portion of the company's remaining revenue to be entered into as the term of the partnership. A joint venture is usually formed when everyone contributes to the plan, with a \" positive \" outcome at the end and usually lasts several months after the joint venture expires. Ending3: [substeps] Before making a partner's agreement, you should analyze the potential risks involved in buying the property. A limited liability company may only buy a share of the property and a sole proprietorship, the two companies can only purchase the property when they are certain it is in the best interest of the joint venture to make use of the full share. Ending4: A partnership agreement will provide the joint venture with terms like budgetary and money-management, as well as an agreement to allow the parties to lease the house to others. In addition, a partnership agreement requires the parties to be friends of one another.\n\nAnswer format: ending1/ending2/ending3/ending4",
+      "input": "",
+      "display_stem": "Please choose the correct ending to complete the given sentence: Finance and Business: How to buy a house with friends Determine what the agreement will cover. A partnership agreement is a legal contract entered into when a group of individuals go in together on a joint venture. In this situation, the joint venture is buying a home.",
+      "choices": [
+        {
+          "label": "ending1",
+          "text": "The partnership agreement will dictate how you and your friends will be required to interact when it comes to purchasing and living in the home. While you and your friends can agree to almost anything, if you fail to address certain issues, state laws (usually called uniform partnership acts) will fill in the blanks for you."
+        },
+        {
+          "label": "ending2",
+          "text": "A joint venture allows a large portion of the company's remaining revenue to be entered into as the term of the partnership. A joint venture is usually formed when everyone contributes to the plan, with a \" positive \" outcome at the end and usually lasts several months after the joint venture expires."
+        },
+        {
+          "label": "ending3",
+          "text": "Before making a partner's agreement, you should analyze the potential risks involved in buying the property. A limited liability company may only buy a share of the property and a sole proprietorship, the two companies can only purchase the property when they are certain it is in the best interest of the joint venture to make use of the full share."
+        },
+        {
+          "label": "ending4",
+          "text": "A partnership agreement will provide the joint venture with terms like budgetary and money-management, as well as an agreement to allow the parties to lease the house to others. In addition, a partnership agreement requires the parties to be friends of one another."
+        }
+      ],
+      "gold_answer": "ending1",
+      "historical": {
+        "ours_prediction": "ending1",
+        "teacher_prediction": "ending1",
+        "ours_correct": true,
+        "teacher_correct": true,
+        "ours_latency_ms": 17.952855676412582,
+        "teacher_latency_ms": 29.731038957834244,
+        "time_saved_ms": 11.778183281421661,
+        "speedup_vs_teacher": 1.6560618262473121,
+        "ours_exit_layer": 16,
+        "teacher_exit_layer": 28
+      },
+      "historical_timing_outlier": false
+    }
+  ]
+}

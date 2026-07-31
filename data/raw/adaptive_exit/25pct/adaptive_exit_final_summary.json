@@ -1,0 +1,195 @@
+{
+  "controller": {
+    "kind": "four_input_one_output_linear_sigmoid",
+    "feature_names": [
+      "entropy_norm",
+      "top_surprisal",
+      "js_from_prev",
+      "energy_gap"
+    ],
+    "decision_threshold": 0.5,
+    "train_policy_examples": 5390,
+    "calibration_simulation": {
+      "samples": 1750,
+      "accuracy": 0.9565714285714285,
+      "oracle_accuracy": 0.9582857142857143,
+      "full_accuracy": 0.96,
+      "avg_exit_layer": 16.208,
+      "estimated_layer_savings": 0.42114285714285715,
+      "exit_layer_hist": {
+        "16": 1688,
+        "20": 40,
+        "24": 15,
+        "28": 7
+      },
+      "macro_accuracy": 0.9565714285714285,
+      "full_macro_accuracy": 0.96,
+      "per_dataset": {
+        "ARC-Challenge": {
+          "samples": 250,
+          "accuracy": 0.936,
+          "full_accuracy": 0.944
+        },
+        "ARC-Easy": {
+          "samples": 250,
+          "accuracy": 0.956,
+          "full_accuracy": 0.952
+        },
+        "hellaswag": {
+          "samples": 250,
+          "accuracy": 0.984,
+          "full_accuracy": 0.98
+        },
+        "openbookqa": {
+          "samples": 250,
+          "accuracy": 0.932,
+          "full_accuracy": 0.944
+        },
+        "piqa": {
+          "samples": 250,
+          "accuracy": 0.96,
+          "full_accuracy": 0.964
+        },
+        "social_i_qa": {
+          "samples": 250,
+          "accuracy": 0.94,
+          "full_accuracy": 0.944
+        },
+        "winogrande": {
+          "samples": 250,
+          "accuracy": 0.988,
+          "full_accuracy": 0.992
+        }
+      }
+    }
+  },
+  "runtime_test": {
+    "datasets": [
+      "piqa",
+      "social_i_qa",
+      "hellaswag",
+      "winogrande",
+      "ARC-Challenge",
+      "ARC-Easy",
+      "openbookqa"
+    ],
+    "samples": 19149,
+    "static_phase1_5_macro_accuracy": 0.8503251668068466,
+    "paired_full_runtime_macro_accuracy": 0.8503251668068466,
+    "adaptive_exit_macro_accuracy": 0.8493651651576306,
+    "macro_accuracy_delta_vs_paired_full": -0.0009600016492159469,
+    "paired_full_weighted_accuracy": 0.8932581335839992,
+    "adaptive_exit_weighted_accuracy": 0.8919003603321323,
+    "weighted_accuracy_delta_vs_paired_full": -0.0013577732518669382,
+    "weighted_avg_exit_layer": 16.38769648545616,
+    "weighted_estimated_layer_savings": 0.41472512551942287,
+    "aggregate_wall_clock_speedup_vs_full": 1.5733871805792776,
+    "full_elapsed_sec": 377.99615365453064,
+    "adaptive_exit_elapsed_sec": 240.2435702541843,
+    "paper_safe_at_0p5pp_macro_drop": true,
+    "per_dataset": {
+      "piqa": {
+        "full_accuracy": 0.8596300326441785,
+        "adaptive_exit_accuracy": 0.8547334058759521,
+        "accuracy_delta": -0.004896626768226331,
+        "avg_exit_layer": 16.248095756256802,
+        "estimated_layer_savings": 0.41971086584797135,
+        "wall_clock_speedup_vs_full": 1.5969846189237218,
+        "exit_layer_hist": {
+          "16": 1760,
+          "20": 51,
+          "24": 18,
+          "28": 9
+        }
+      },
+      "social_i_qa": {
+        "full_accuracy": 0.7901740020470829,
+        "adaptive_exit_accuracy": 0.793756397134084,
+        "accuracy_delta": 0.003582395087001089,
+        "avg_exit_layer": 16.517911975435005,
+        "estimated_layer_savings": 0.4100745723058926,
+        "wall_clock_speedup_vs_full": 1.546054137775201,
+        "exit_layer_hist": {
+          "16": 1788,
+          "20": 106,
+          "24": 33,
+          "28": 27
+        }
+      },
+      "hellaswag": {
+        "full_accuracy": 0.9412467635929098,
+        "adaptive_exit_accuracy": 0.9406492730531767,
+        "accuracy_delta": -0.0005974905397331254,
+        "avg_exit_layer": 16.199163513244372,
+        "estimated_layer_savings": 0.42145844595555815,
+        "wall_clock_speedup_vs_full": 1.6020362310951892,
+        "exit_layer_hist": {
+          "16": 9669,
+          "20": 277,
+          "24": 65,
+          "28": 31
+        }
+      },
+      "winogrande": {
+        "full_accuracy": 0.8674033149171271,
+        "adaptive_exit_accuracy": 0.8650355169692187,
+        "accuracy_delta": -0.0023677979479084232,
+        "avg_exit_layer": 16.126282557221785,
+        "estimated_layer_savings": 0.42406133724207906,
+        "wall_clock_speedup_vs_full": 1.5951941827699199,
+        "exit_layer_hist": {
+          "16": 1232,
+          "20": 30,
+          "24": 5
+        }
+      },
+      "ARC-Challenge": {
+        "full_accuracy": 0.773037542662116,
+        "adaptive_exit_accuracy": 0.7713310580204779,
+        "accuracy_delta": -0.0017064846416381396,
+        "avg_exit_layer": 17.300341296928327,
+        "estimated_layer_savings": 0.38213066796684547,
+        "wall_clock_speedup_vs_full": 1.4525318931786928,
+        "exit_layer_hist": {
+          "16": 936,
+          "20": 135,
+          "24": 57,
+          "28": 44
+        }
+      },
+      "ARC-Easy": {
+        "full_accuracy": 0.8867845117845118,
+        "adaptive_exit_accuracy": 0.8800505050505051,
+        "accuracy_delta": -0.006734006734006703,
+        "avg_exit_layer": 16.757575757575758,
+        "estimated_layer_savings": 0.4015151515151515,
+        "wall_clock_speedup_vs_full": 1.488932275945295,
+        "exit_layer_hist": {
+          "16": 2092,
+          "20": 163,
+          "24": 76,
+          "28": 45
+        }
+      },
+      "openbookqa": {
+        "full_accuracy": 0.834,
+        "adaptive_exit_accuracy": 0.84,
+        "accuracy_delta": 0.006000000000000005,
+        "avg_exit_layer": 16.944,
+        "estimated_layer_savings": 0.3948571428571429,
+        "wall_clock_speedup_vs_full": 1.5008055400995053,
+        "exit_layer_hist": {
+          "16": 428,
+          "20": 39,
+          "24": 20,
+          "28": 13
+        }
+      }
+    }
+  },
+  "artifacts": {
+    "policy_json": "source://local-results/adaptive_exit_budget_s44_heldout_macro_20260717_192135/budget25_k17/policy/oracle_distilled_exit_policy.json",
+    "runtime_report_json": "source://local-results/adaptive_exit_budget_s44_heldout_macro_20260717_192135/budget25_k17/runtime_7task/runtime_confidence_exit_all_report.json",
+    "runtime_summary_csv": "source://local-results/adaptive_exit_budget_s44_heldout_macro_20260717_192135/budget25_k17/runtime_7task/runtime_confidence_exit_summary.csv"
+  }
+}

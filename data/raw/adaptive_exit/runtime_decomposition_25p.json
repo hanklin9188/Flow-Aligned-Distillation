@@ -1,0 +1,169 @@
+{
+  "benchmark_contract": {
+    "gpu_count": 1,
+    "same_slurm_job": true,
+    "same_test_records": true,
+    "active_compaction_batch_size": 1,
+    "datasets": [
+      "piqa",
+      "social_i_qa",
+      "hellaswag",
+      "winogrande",
+      "ARC-Challenge",
+      "ARC-Easy",
+      "openbookqa"
+    ],
+    "speedup_table_definition": "task-wise geometric mean of samples/s ratio versus merged teacher"
+  },
+  "designs": {
+    "merged_teacher": {
+      "macro_accuracy": 0.8229472648994218,
+      "aggregate_samples_per_s": 55.87757173144629,
+      "task_geomean_speedup_vs_teacher": 1.0,
+      "aggregate_speedup_vs_teacher": 1.0,
+      "elapsed_sec": 342.69563631061465
+    },
+    "fad_static_25p": {
+      "macro_accuracy": 0.8503251668068466,
+      "aggregate_samples_per_s": 52.05858523365138,
+      "task_geomean_speedup_vs_teacher": 0.9083196443638076,
+      "aggregate_speedup_vs_teacher": 0.9316543940715717,
+      "elapsed_sec": 367.8355820477009
+    },
+    "fad_ae_25p": {
+      "macro_accuracy": 0.8493651651576306,
+      "aggregate_samples_per_s": 81.8433115440951,
+      "task_geomean_speedup_vs_teacher": 1.3882786945485728,
+      "task_geomean_speedup_vs_static": 1.5284032478686853,
+      "aggregate_speedup_vs_teacher": 1.4646898390188283,
+      "aggregate_speedup_vs_static": 1.5721386045502916,
+      "elapsed_sec": 233.9714710796252,
+      "macro_accuracy_drop_vs_static": -0.0009600016492159469
+    }
+  },
+  "per_dataset": [
+    {
+      "dataset": "piqa",
+      "samples": 1838,
+      "teacher_accuracy": 0.8514689880304679,
+      "static_25p_accuracy": 0.8596300326441785,
+      "ae_25p_accuracy": 0.8547334058759521,
+      "teacher_samples_per_s": 70.75563360105546,
+      "static_25p_samples_per_s": 63.42858913878101,
+      "ae_25p_samples_per_s": 100.10240802371857,
+      "static_speedup_vs_teacher": 0.896445779800562,
+      "ae_speedup_vs_teacher": 1.414762371970694,
+      "ae_speedup_vs_static": 1.5781906768365237,
+      "teacher_elapsed_sec": 25.9767301408574,
+      "static_25p_elapsed_sec": 28.977469386532903,
+      "ae_25p_elapsed_sec": 18.361196661368012,
+      "ae_avg_exit_layer": 16.248095756256802
+    },
+    {
+      "dataset": "social_i_qa",
+      "samples": 1954,
+      "teacher_accuracy": 0.7911975435005117,
+      "static_25p_accuracy": 0.7901740020470829,
+      "ae_25p_accuracy": 0.793756397134084,
+      "teacher_samples_per_s": 72.41895891894262,
+      "static_25p_samples_per_s": 64.56449144560041,
+      "ae_25p_samples_per_s": 97.99546188940678,
+      "static_speedup_vs_teacher": 0.8915412815843764,
+      "ae_speedup_vs_teacher": 1.3531741321922555,
+      "ae_speedup_vs_static": 1.5177918960606085,
+      "teacher_elapsed_sec": 26.981884704902768,
+      "static_25p_elapsed_sec": 30.264313343912363,
+      "ae_25p_elapsed_sec": 19.939698862843215,
+      "ae_avg_exit_layer": 16.517911975435005
+    },
+    {
+      "dataset": "hellaswag",
+      "samples": 10042,
+      "teacher_accuracy": 0.9283011352320255,
+      "static_25p_accuracy": 0.9412467635929098,
+      "ae_25p_accuracy": 0.9406492730531767,
+      "teacher_samples_per_s": 47.22951851041767,
+      "static_25p_samples_per_s": 44.892237651906214,
+      "ae_25p_samples_per_s": 72.19402491401112,
+      "static_speedup_vs_teacher": 0.9505122869716339,
+      "ae_speedup_vs_teacher": 1.5285784651411785,
+      "ae_speedup_vs_static": 1.6081627624312824,
+      "teacher_elapsed_sec": 212.62126561347395,
+      "static_25p_elapsed_sec": 223.6912331674248,
+      "ae_25p_elapsed_sec": 139.09738391730934,
+      "ae_avg_exit_layer": 16.199163513244372
+    },
+    {
+      "dataset": "winogrande",
+      "samples": 1267,
+      "teacher_accuracy": 0.813733228097869,
+      "static_25p_accuracy": 0.8674033149171271,
+      "ae_25p_accuracy": 0.8650355169692187,
+      "teacher_samples_per_s": 73.00397330155042,
+      "static_25p_samples_per_s": 64.69765107504959,
+      "ae_25p_samples_per_s": 101.98355140691471,
+      "static_speedup_vs_teacher": 0.8862209568759949,
+      "ae_speedup_vs_teacher": 1.3969589159984646,
+      "ae_speedup_vs_static": 1.5763099542611414,
+      "teacher_elapsed_sec": 17.355219759978354,
+      "static_25p_elapsed_sec": 19.583400308154523,
+      "ae_25p_elapsed_sec": 12.4235720615834,
+      "ae_avg_exit_layer": 16.126282557221785
+    },
+    {
+      "dataset": "ARC-Challenge",
+      "samples": 1172,
+      "teacher_accuracy": 0.7235494880546075,
+      "static_25p_accuracy": 0.773037542662116,
+      "ae_25p_accuracy": 0.7713310580204779,
+      "teacher_samples_per_s": 66.0700927340361,
+      "static_25p_samples_per_s": 61.27875490402919,
+      "ae_25p_samples_per_s": 88.8143303375613,
+      "static_speedup_vs_teacher": 0.9274809882696193,
+      "ae_speedup_vs_teacher": 1.3442440696289273,
+      "ae_speedup_vs_static": 1.4493494601294779,
+      "teacher_elapsed_sec": 17.738737021572888,
+      "static_25p_elapsed_sec": 19.125714969821274,
+      "ae_25p_elapsed_sec": 13.196068647317588,
+      "ae_avg_exit_layer": 17.300341296928327
+    },
+    {
+      "dataset": "ARC-Easy",
+      "samples": 2376,
+      "teacher_accuracy": 0.8463804713804713,
+      "static_25p_accuracy": 0.8867845117845118,
+      "ae_25p_accuracy": 0.8800505050505051,
+      "teacher_samples_per_s": 67.94594290859902,
+      "static_25p_samples_per_s": 62.01358193022218,
+      "ae_25p_samples_per_s": 92.68965751142957,
+      "static_speedup_vs_teacher": 0.9126899896531414,
+      "ae_speedup_vs_teacher": 1.3641676536318854,
+      "ae_speedup_vs_static": 1.4946670491590726,
+      "teacher_elapsed_sec": 34.968975310213864,
+      "static_25p_elapsed_sec": 38.31418740935624,
+      "ae_25p_elapsed_sec": 25.63392792455852,
+      "ae_avg_exit_layer": 16.757575757575758
+    },
+    {
+      "dataset": "openbookqa",
+      "samples": 500,
+      "teacher_accuracy": 0.806,
+      "static_25p_accuracy": 0.834,
+      "ae_25p_accuracy": 0.84,
+      "teacher_samples_per_s": 70.8935905733258,
+      "static_25p_samples_per_s": 63.4577079925987,
+      "ae_25p_samples_per_s": 93.99162300850993,
+      "static_speedup_vs_teacher": 0.895112061321875,
+      "ae_speedup_vs_teacher": 1.3258127039184686,
+      "ae_speedup_vs_static": 1.4811695219038248,
+      "teacher_elapsed_sec": 7.052823759615421,
+      "static_25p_elapsed_sec": 7.879263462498784,
+      "ae_25p_elapsed_sec": 5.319623004645109,
+      "ae_avg_exit_layer": 16.944
+    }
+  ],
+  "source_reports": {
+    "fad": "source://local-results/ll3b_25p_ae_teacher_throughput_20260718/fad_25p_runtime/runtime_confidence_exit_all_report.json",
+    "teacher": "source://local-results/ll3b_25p_ae_teacher_throughput_20260718/teacher_runtime/runtime_confidence_exit_all_report.json"
+  }
+}

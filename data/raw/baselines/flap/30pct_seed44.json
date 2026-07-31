@@ -1,0 +1,75 @@
+{
+  "summary": [
+    {
+      "label": "flap_mlp_ce_recovered:student_base",
+      "mean_accuracy": 0.5786839791330876,
+      "num_tasks": 7,
+      "tasks": "ARC-Challenge ARC-Easy hellaswag openbookqa piqa social_i_qa winogrande"
+    }
+  ],
+  "per_task": [
+    {
+      "label": "flap_mlp_ce_recovered",
+      "variant": "student_base",
+      "dataset": "ARC-Challenge",
+      "accuracy": 0.4232081911262799,
+      "throughput_toks_per_s": "28005.13655113433",
+      "avg_latency_ms": "16.85782896240366",
+      "source_csv": "source://local-results/flap_ce_llama32_3b_flap_ce_30pct_20260620_005418/flap_mlp_ce_recovered.csv"
+    },
+    {
+      "label": "flap_mlp_ce_recovered",
+      "variant": "student_base",
+      "dataset": "ARC-Easy",
+      "accuracy": 0.5126262626262627,
+      "throughput_toks_per_s": "26483.673963816338",
+      "avg_latency_ms": "16.357831953654713",
+      "source_csv": "source://local-results/flap_ce_llama32_3b_flap_ce_30pct_20260620_005418/flap_mlp_ce_recovered.csv"
+    },
+    {
+      "label": "flap_mlp_ce_recovered",
+      "variant": "student_base",
+      "dataset": "hellaswag",
+      "accuracy": 0.6917944632543318,
+      "throughput_toks_per_s": "46995.165636327925",
+      "avg_latency_ms": "21.23254833895445",
+      "source_csv": "source://local-results/flap_ce_llama32_3b_flap_ce_30pct_20260620_005418/flap_mlp_ce_recovered.csv"
+    },
+    {
+      "label": "flap_mlp_ce_recovered",
+      "variant": "student_base",
+      "dataset": "openbookqa",
+      "accuracy": 0.544,
+      "throughput_toks_per_s": "23575.552166355374",
+      "avg_latency_ms": "15.913773613981903",
+      "source_csv": "source://local-results/flap_ce_llama32_3b_flap_ce_30pct_20260620_005418/flap_mlp_ce_recovered.csv"
+    },
+    {
+      "label": "flap_mlp_ce_recovered",
+      "variant": "student_base",
+      "dataset": "piqa",
+      "accuracy": 0.6675734494015234,
+      "throughput_toks_per_s": "13741.84427078494",
+      "avg_latency_ms": "14.888957915047307",
+      "source_csv": "source://local-results/flap_ce_llama32_3b_flap_ce_30pct_20260620_005418/flap_mlp_ce_recovered.csv"
+    },
+    {
+      "label": "flap_mlp_ce_recovered",
+      "variant": "student_base",
+      "dataset": "social_i_qa",
+      "accuracy": 0.6519959058341863,
+      "throughput_toks_per_s": "18392.760767191754",
+      "avg_latency_ms": "15.352152865866206",
+      "source_csv": "source://local-results/flap_ce_llama32_3b_flap_ce_30pct_20260620_005418/flap_mlp_ce_recovered.csv"
+    },
+    {
+      "label": "flap_mlp_ce_recovered",
+      "variant": "student_base",
+      "dataset": "winogrande",
+      "accuracy": 0.5595895816890292,
+      "throughput_toks_per_s": "10782.935505222478",
+      "avg_latency_ms": "14.616476561162612",
+      "source_csv": "source://local-results/flap_ce_llama32_3b_flap_ce_30pct_20260620_005418/flap_mlp_ce_recovered.csv"
+    }
+  ]
+}

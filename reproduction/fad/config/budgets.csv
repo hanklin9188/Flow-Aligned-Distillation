@@ -1,0 +1,5 @@
+compression_pct,prototype_count,array_index,seed,input_gate_quantile
+15,22,0,44,0.40
+20,19,1,44,0.40
+25,17,2,44,0.40
+30,15,3,44,0.24

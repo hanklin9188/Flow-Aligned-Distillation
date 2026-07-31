@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this research artifact, please cite the repository."
+title: "FAD: Flow-Aligned Distillation Research Portfolio"
+type: software
+authors:
+  - family-names: Lin
+    given-names: Hank
+repository-code: "https://github.com/hanklin9188/FAD-Portfolio"
+url: "https://hanklin9188.github.io/FAD-Portfolio/"
+version: 1.0.0
+date-released: 2026-07-31
+

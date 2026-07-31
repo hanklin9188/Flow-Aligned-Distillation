@@ -1,0 +1,887 @@
+%==================================================================
+%  AAAI-2027 SUBMISSION (double-blind / anonymous)
+%  Information-Theoretic Distillation and Compression via Flow Alignment
+%
+%  Uses the OFFICIAL AAAI-2027 style: \documentclass[letterpaper]{article}
+%  + \usepackage{aaai2027}. Keep aaai2027.sty and aaai2027.bst (AAAI author
+%  kit) in this folder and compile with pdflatex. Citations are author-year
+%  (natbib); the bibliography below is a manual thebibliography, so no
+%  bibtex/.bib is required.
+%
+%  OPEN ITEMS:
+%   - Missing figure assets (currently labelled placeholders): ffn.png
+%     (shared-FFN block), budget_curve_8b.pdf, budget_curve_3b.pdf.
+%   - The reproducibility CHECKLIST is uploaded SEPARATELY (not in this PDF).
+%   - For review you may add \nocopyright (after \usepackage{aaai2027}) to
+%     hide the copyright footer; leave it on if the CFP requires it.
+%   - Camera-ready: de-anonymise \author{...}\affiliations{...}.
+%==================================================================
+%
+% -------------------- OFFICIAL AAAI-2027 PREAMBLE -----------------------
+\documentclass[letterpaper]{article} % aaai2027 sets two-column, fonts, margins
+\usepackage{aaai2027}                % official style file (do NOT modify it)
+\usepackage{times}
+\usepackage{helvet}
+\usepackage{courier}
+\usepackage[hyphens]{url}
+\usepackage{graphicx}
+\urlstyle{rm}
+\def\UrlFont{\rm}
+\usepackage{natbib}
+\usepackage{float} 
+\usepackage{caption}
+% Math / table / algorithm packages used by this paper (all AAAI-permitted):
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{float}   % [H] exact placement for the notation table
+\usepackage{subcaption}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\frenchspacing
+\setcounter{secnumdepth}{2} % numbered sections (\ref resolves) + appendix A/B/C
+\pdfinfo{
+/Title (Information-Theoretic Distillation and Compression via Flow Alignment)
+/Author (Anonymous Submission)
+/TemplateVersion (2027.1)
+}
+% ------------------------------------------------------------------------
+
+% ---- Macros (KEEP these when porting to the AAAI template) -------
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\calL}{\mathcal{L}}
+\newcommand{\calS}{\mathcal{S}}
+\newcommand{\calF}{\mathcal{F}}
+\newcommand{\calV}{\mathcal{V}}
+\newcommand{\calD}{\mathcal{D}}
+\newcommand{\calE}{\mathcal{E}}
+\newcommand{\calN}{\mathcal{N}}
+\newcommand{\calQ}{\mathcal{Q}}
+\newcommand{\FAD}{\mathrm{FAD}}
+\newcommand{\CE}{\mathrm{CE}}
+\newcommand{\KL}{\mathrm{KL}}
+\newcommand{\diag}{\mathrm{diag}}
+\newcommand{\Attn}{\mathrm{Attn}}
+\newcommand{\Norm}{\mathrm{Norm}}
+\newcommand{\FFN}{\mathrm{FFN}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\tr}{\mathrm{tr}}
+\newcommand{\bv}{\boldsymbol{v}}
+\newcommand{\bz}{\boldsymbol{z}}
+\newcommand{\be}{\boldsymbol{e}}
+\newcommand{\bx}{\boldsymbol{x}}
+\newcommand{\bc}{\boldsymbol{c}}
+\newcommand{\bmu}{\boldsymbol{\mu}}      % vector: lowercase bold
+\newcommand{\blambda}{\boldsymbol{\lambda}} % vector: lowercase bold
+% Matrices: uppercase italic (thin), distinct from bold vectors.
+\newcommand{\bSigma}{\varSigma}
+\newcommand{\bLambda}{\varLambda}
+\newcommand{\bD}{D}
+\newcommand{\bB}{B}
+\newcommand{\bI}{I}
+% Matrices: uppercase italic (thin), distinct from bold vectors.
+\newcommand{\Diag}{\operatorname{Diag}}
+\newcommand{\bsigma}{\boldsymbol{\sigma}}
+
+
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+
+% ---- Robust figure inclusion: real asset OR labelled placeholder ----
+\graphicspath{{.}{./figures/}{./fig/}}
+\newcommand{\paperfig}[2]{%
+  \IfFileExists{#1}{\includegraphics[width=#2]{#1}}{%
+    \fbox{\parbox[c][3.0cm][c]{#2}{\centering\ttfamily\footnotesize
+      [figure placeholder]\\ \detokenize{#1}}}}}
+% ====================== END PREAMBLE ==============================
+
+\title{Information-Theoretic Distillation and Compression via Flow Alignment}
+% Double-blind submission: author/affiliation anonymised for review.
+% Camera-ready: replace with \author{Name}\affiliations{Institution\\ email}.
+\author{Anonymous Submission}
+\affiliations{}
+%\affiliations{Paper under double-blind review}
+
+\begin{document}
+\maketitle
+
+% % ===============================================================
+\begin{abstract}
+% ===============================================================
+Deploying large language models (LLMs) requires aggressive compression without sacrificing the reasoning performance, yet existing methods treat parameters as flat numerical arrays and overlook the geometric structure of layer-wise information flow. This study presents a new {flow-aligned distillation (FAD)}, a shared feedforward network (FFN) compression framework that preserves the functional behavior of the teacher through a transport-aware objective. The key observation is that the FFN residual update is the constant velocity of the straight-line path from the post-attention state to the next block, yielding a local transport interpretation: the distillation target is the teacher's realized local transport, not its weight matrices. This paper formulates FAD as a \emph{bilevel} information-preservation objective whose outer level maximizes a variational lower bound on the mutual information between projected teacher and student transport velocities, while the inner level selects the least-committal student-tied surrogate by maximum entropy under a teacher-induced \emph{scale matrix}. The inner solution is Gibbs-Boltzmann and, under the prescribed conditional moments, exactly Gaussian; substituting it back to arrange the objective in closed form as a teacher-standardized information energy whose expected value is the FAD alignment loss. In Llama-3.2-3B and Llama-3.1-8B, FAD outperforms the matched-compression baselines in the main matched FFN budgets and remains competitive in the most aggressive setting, reducing the model parameters by up to $30\%$; Qwen-3.5 also matches its teacher on common sense benchmarks. Ablations confirm that the preserved variable, coordinate system, and metric are each load-bearing. With a calibrated adaptive-exit extension, the $25\%$ FAD student improves inference throughput by 46.3\% over the merged teacher while preserving macro accuracy.
+\end{abstract}
+
+\begin{figure*}[th] \centering
+  \paperfig{Figure/overview-1.pdf}{0.75\textwidth}
+  \caption{\label{fig:pipeline}{Overview of flow-aligned distillation (FAD) with three stages.} The frozen teacher (top) and the compressed student (bottom) process the same input, and at the {last prediction token} $T$, each block $\ell$ exposes its FFN residual update as a one-step transport velocity, $v_T^{(\ell)}=\Delta h_T^{(\ell)}$ and $v_S^{(\ell)}=\Delta h_S^{(\ell)}$. {(i)}~Attention is frozen in both models; teacher keeps its $L$ independent FFNs, whereas student replaces them with $K\ll L$ \emph{shared} weights together with a trainable per-layer low-rank adapter by \eqref{eq:student-ffn}, and layers with similar FFN inputs are tied to a single core (the colored ``Shared FFN Parameter'' blocks). {(ii)}~A shared low-rank teacher basis (``project~$\bB$'') maps both velocities to their subspace codes $\{\bz_T^{(\ell)}, \bz_S^{(\ell)}\}$ by \eqref{eq:proj}. {(iii)}~Flow-aligned distillation pulls the student transport curve (blue, low information energy) onto the teacher curve (red, high information energy) layer by layer; the training signal is the teacher-standardized information energy of the bilevel programme by \eqref{eq:bilevel}, whose Gibbs-Boltzmann/Gaussian inner surrogate reduces it in closed form to the FAD loss by \eqref{eq:fad}. Frozen and trainable components are shown.}
+\end{figure*}
+
+% ===============================================================
+\section{Introduction}
+\label{sec:intro}
+% ===============================================================
+Large language models (LLMs) achieve strong reasoning performance, but their deployment remains challenging in edge-sized, latency-sensitive, and on-premise settings, where memory and bandwidth are relatively-limited during inference. Reducing inference cost while preserving reasoning capability is therefore a crucial concern. Standard compression methods based on quantization~\citep{frantar2023gptq,lin2023awq}, structured pruning~\citep{ma2023llmpruner,sun2024wanda} and layer removal~\citep{men2024shortgpt} typically optimized the weight- or activation-level reconstruction errors, which did not explicitly preserve the \emph{functional behavior} of each transformer sub-network. A problem exists in the deep residual architecture, where small layer-wise deviations are aggregated by transport in depth.
+
+We argue that the functional unit of a transformer's feedforward network (FFN) cascaded with an attention network is not its weight matrix, but its residual update $\Delta h^{(\ell)}$ as local transport at layer $\ell$ in the form of
+\begin{align}
+\Delta h^{(\ell)} &= \FFN^{(\ell)}(\Norm_2(u^{(\ell)})) \label{eq ffn}\\
+u^{(\ell)} &= h^{(\ell)} + \Attn(\Norm_1(h^{(\ell)})) \label{eq att}
+\end{align}
+where two normalization steps are performed with an attention network. Since $h^{(\ell+1)}=u^{(\ell)}+\Delta h^{(\ell)}$, the update is seen as a straight path $\phi^{(\ell)}(t)=u^{(\ell)}+t\,\Delta h^{(\ell)}$ with constant velocity $\Delta h^{(\ell)}$ and time parameter $t\in[0,1]$, so each realized teacher FFN update admits a one-step local-transport interpretation, and the distillation becomes an alignment of the student's sample-wise transport velocity with this rectified target. This paper presents flow-aligned distillation (FAD) for shared FFNs in LLM compression based on three stages: (i) collect teacher FFN velocities and fit teacher-derived low-rank transport subspaces; (ii) replace the $L$ independent FFNs with $K\ll L$ shared operators plus lightweight per-layer adapters; and (iii) train by aligning teacher and student FFN transports in a teacher-induced metric space. Crucially, the FAD loss is \emph{derived} from a bilevel information-preservation problem, which is tackled by reducing the \emph{information energy} or the normalized conditional surprisal of the teacher transport under a student-centric posterior in a Gibbs-Boltzmann form according to the Jaynes' maximum-entropy principle~\citep{jaynes1957information}. There are three-fold findings which are presented to
+\begin{itemize}
+\item[$-$] interpret the transformer's FFN residual updates as the one-step local transport velocities and formulate the shared-FFN compression as the preservation of teacher transport information under a parameter budget,
+\item[$-$] formulate a bilevel information-preservation objective: the outer level maximizes a variational teacher-student transport mutual information bound, and the inner level selects a student-tied maximum-entropy surrogate where the inner problem yields a Gibbs-Boltzmann or Gaussian conditional whose relative surprisal reduces the outer objective in closed form to an information energy,
+\item[$-$] outperform or match the performance of teacher model using the compressed FAD models across 2B/3.5B/8B backbones where FFN parameters are compressed by up to $36.9\%$, and validates over different information-theoretic transport targets, teacher-derived transport coordinates, and teacher-induced scale matrix.
+\end{itemize}
+
+% % ===============================================================
+\section{Related Work}
+\label{sec:related}
+% ===============================================================
+\paragraph{Compression and weight sharing.}
+LLMs could be compressed by quantization, reducing the bit-width of weights or activations~\citep{jacob2018quantization,frantar2023gptq,lin2023awq} or by pruning, removing the low-saliency weights~\citep{han2015deepcompression,frantar2023sparsegpt,sun2024wanda,ma2023llmpruner}. However, both methods treated the network as a flat numerical array and ignored the layer-wise {function} where each sub-network implements. Instead, parameter sharing tied weights across layers in transformer encoders and LLM variants~\citep{lan2020albert, dehghani2019universal}. These methods shared attention or adjacent layers with light recovery parameters~\citep{shareyourattention, flexigpt}, or dropped or pruned layers~\citep{men2024shortgpt, chen2025streamlining, flatllm, flap}. This paper neither prunes layers nor shares weights: it consolidates {FFN} operators into a $K\ll L$ shared banks by preserving per-layer transport geometry through a distillation signal.
+
+\paragraph{Knowledge distillation.}
+Knowledge distillation aims to compress LLM by transferring teacher knowledge to a learned student where soft-label distillation and feature representation matching~\citep{romero2015fitnets, jiao2020tinybert, wang2020minilm, sanh2019distilbert} with on-policy learning~\citep{gu2024minillm, agarwal2024gkd} were proposed. This paper concerns what and where the feature representation matches in distillation learning. The residual update of FFN is seen as the transport velocity, which is used to distillation by matching in a teacher-induced low-rank subspace under an anisotropic metric. 
+
+\paragraph{Flow matching and information bottleneck.}
+The rectified one-step {interpretation} based on flow matching has been presented in~\citep{chen2018neuralode,lipman2023flowmatching,liu2023rectified} where the FFN residual update was treated as straight transport. Teacher velocities were therefore realized to provide fixed, sample-conditioned per-layer targets without the need of learning a source distribution or integrating a trajectory. In addition, the information bottleneck based on the variational mutual information bounds~\citep{barber2003im,poole2019variational} was exploited in ~\citep{tishby2015deep,alemi2017vib}. This paper would like to balance a compression-prediction trade-off from an information-theoretic perspective, which instantiates teacher transport as the source information and student transport as the target representation with a finite student budget preserving the dominant teacher transport directions.
+
+% ===============================================================
+\section{Flow Aligned Distillation}
+\label{sec:method}
+% ===============================================================
+FAD is constructed as a framework to reduce information energy as illustrated in Figure~\ref{fig:pipeline}. We utilize each residual update of the teacher's FFN as a local transport in one-step and train a compressed student by aligning the transports of the teacher and the student in a teacher-standardized subspace where the resulting student transport incurs a reduced {information energy}. This framework is formulated by dealing with three issues, including the preservation of information through the FFN residual update as a transport velocity, the construction of low-rank coordinate system estimated from teacher velocities, and the measurement of the deviations of anisotropic information energy from a student-centric maximum-entropy posterior. Capacity reduction is achieved by the shared FFN parameters. The details are described in what follows.
+
+% ---------------------------------------------------------------
+\subsection{Residual Transport as the Preserved Information} \label{sec:transport}
+A compressed student cannot reproduce the teacher exactly, and its per-layer errors are propagated: each block adds its feedforward update to a residual stream that the next block reads, so an error at one layer is carried forward and magnified by every layer above it, i.e. small per-layer errors may be accumulated through layers to cause a large output deviation. This is why matching only the final prediction is fragile. The preserved information for distillation needs to be the updates in individual layers made to the residual stream, not the teacher's weights themselves. The student would like to reproduce those updates step by step, and the stream should stay on the teacher's trajectory to restrict the distillation error. Running each update as a short, straight-line motion of the hidden state carries out a \emph{flow-matching} solution to distillation and compression. The target is the teacher's motion behavior on the given input, i.e. a fixed sample-conditioned velocity in each layer, which is different from standard flow matching as generative model through sampling where no trajectory is integrated.
+
+\begin{figure}[t]\centering
+  \paperfig{Figure/compound_error.pdf}{\linewidth}
+  \caption{\label{fig:compound}{Residual transport for compression.} Replacing each teacher feedforward sublayer with a \emph{shared} weights produces a small per-layer error $\varepsilon^{(\ell)}$ because every block reads the stream the previous one wrote, the student state $h_S^{(\ell)}$ drifts (red) further from the teacher's with depth. FAD deals with this by matching the per-layer transport update directly.}
+\end{figure}
+
+Consider an LLM with transformer calculation in Eqs.~(\ref{eq ffn})(\ref{eq att}) given with input hidden state $h^{(\ell)}\in\R^D$ at layer $\ell\in[1,L]$, the teacher's $L$ FFNs produce the velocities $v_T^{(\ell)}=\Delta h_T^{(\ell)}$ for individual layers and the student is learned to replace them with $K\ll L$ shared operators under a sharing assignment $g:[1,L]\to[1,K]$. Eventually, velocities are evaluated in the hidden state of the {last predicted token} $L$, which is the position that provides crucial information for the next-token logits. Here, the variables include $v$ for an ambient velocity, $z$ for its latent variable, and $\bD^{(\ell)}$ for the teacher-induced metric, which is measured from a diagonal covariance matrix of the teacher's variable $z_T$. In the distillation process, as shown in Figure \ref{fig:compound}, we need to preserve the information that the student learned from its teacher. In layer $\ell$, the linear transport path $\phi_T^{(\ell)}(t)=u^{(\ell)}+t\,\Delta h_T^{(\ell)}$, $t\in[0,1]$, runs from $u^{(\ell)}$ through $h_T^{(\ell)}$ to $h_T^{(\ell+1)}$ with constant velocity
+\begin{equation}
+  v_T^{(\ell)}=\tfrac{d}{dt}\phi_T^{(\ell)}(t)=\Delta h_T^{(\ell)}.
+  \label{eq:velocity}
+\end{equation}
+Because Eq.~\eqref{eq:velocity} is straight and propagated at constant speed, the FFN residual update admits a \emph{one-step rectified-transport interpretation}: the preserved signal is the residual transport of the teacher $v_T^{(\ell)}$ including its direction and magnitude rather than the FFN operator $F_T^{(\ell)}$ or its weights, and preservation is carried out aligning with the local transport of the student $v_S^{(\ell)}$ based on a layerwise flow alignment objective against a fixed sample-conditioned target $v_T^{(\ell)}$. This is a {choice} of the distillation target, not a claim that the FFN is trained as a continuous-time flow. The compression based on the residual-transport alignment will be compared with that based on the generic hidden-state matching under a matched shared-FFN architecture.
+
+% ---------------------------------------------------------------
+\subsection{Teacher-Induced Metric via Transport Subspace}
+\label{sec:subspace}
+% ---------------------------------------------------------------
+Since the residual transport $v_T^{(\ell)}$ of a teacher trajectory has been interpreted as crucial information, the next step is to measure its sufficient information for distillation. Typically, the metric using velocities directly in high-dimensional space $\R^D$ sample-by-sample through a Euclidean distance with equal weights for $D$ dimensions is noisy and unreliable. This study works on a low-dimensional latent representation where a compact teacher-driven coordinate system is spanned as a subspace to measure the teacher-induced metric. In this coordinate, the transport of neighboring layers $\{h_T^{(\ell)}, h_T^{(\ell+1)}\}$ in a residual stream runs similarly, so we group them into an assignment $a:[1,L]\to[1,Q]$ over $Q$ {transport groups}, obtained by grouping per-layer velocity statistics. Each group receives one shared set of $r$ orthonormal reference directions $\bB_a$ where a rank-$r$ basis, $\bB_a^{\top}\bB_a=I_r$, spanning the coordinates along which its teacher velocities vary the most, is constructed, and a velocity is spanned by its $r$ coordinates along these coordinates. The teacher and the student use the {same} basis and are centered on the same group mean $\bmu_{a(\ell)}$ in the $r$-dimensional subspace by
+\begin{equation}
+\begin{aligned}
+  \bz_{T,n}^{(\ell)}
+  &=
+  \bB_{a(\ell)}^{\top}
+  \left(
+    v_{T,n}^{(\ell)}
+    -
+    \bmu_{a(\ell)}
+  \right),
+  \\
+  \bz_{S,n}^{(\ell)}
+  &=
+  \bB_{a(\ell)}^{\top}
+  \left(
+    v_{S,n}^{(\ell)}
+    -
+    \bmu_{a(\ell)}
+  \right).
+\end{aligned}
+\label{eq:proj}
+\end{equation}
+Thus, both velocities are represented in the same teacher-derived transport subspace, with
+$\bz_{T,n}^{(\ell)},\bz_{S,n}^{(\ell)}\in\R^r$
+denoting their coordinates within that subspace. Because both velocities are centered using the same teacher-derived mean, the mean cancels from their difference:
+\begin{equation}
+  \bz_{S,n}^{(\ell)}
+  -
+  \bz_{T,n}^{(\ell)}
+  =
+  \bB_{a(\ell)}^{\top}
+  \left(
+    v_{S,n}^{(\ell)}
+    -
+    v_{T,n}^{(\ell)}
+  \right).
+  \label{eq:projected-difference}
+\end{equation}
+Using the same center therefore does not change the student--teacher transport difference after projection. Since $\bB_{a(\ell)}$ is estimated from teacher transport velocities, its columns span the principal subspace of teacher transport variation.
+
+The transport subspace specifies which teacher directions are retained,
+while their scales can still vary across coordinates and layers. We therefore
+estimate the coordinate-wise teacher variance at each layer:
+\begin{equation}
+\begin{aligned}
+  \bsigma_T^{2,(\ell)}
+  &=
+  \Var_n\!\left[
+    \bz_{T,n}^{(\ell)}
+  \right],
+  \\
+  \bSigma_T^{(\ell)}
+  &=
+  \Diag\!\left(
+    \bsigma_T^{2,(\ell)}
+    +
+    \epsilon
+  \right)
+  \succ 0,
+\end{aligned}
+\label{eq:teacher-covariance}
+\end{equation}
+where $\epsilon>0$ ensures numerical invertibility.
+The matrix
+$\bSigma_T^{(\ell)}\in\R^{r\times r}$
+is the layer-wise diagonal covariance of the projected teacher transport.
+It is estimated once from the frozen teacher and remains fixed throughout
+student training. The basis $\bB_{a(\ell)}$ determines which transport
+directions are preserved, while $\bSigma_T^{(\ell)}$ provides their
+directional scales.
+
+% ---------------------------------------------------------------
+% ---------------------------------------------------------------
+\subsection{Information Preservation Objective}
+\label{sec:objective}
+% ---------------------------------------------------------------
+
+Given the projected teacher and student transport velocities and the layer-wise teacher covariance, FAD derives the alignment loss from a bilevel information-preservation objective. The outer problem maximizes a variational lower bound on the mutual information between teacher and student transport velocities, while the inner problem selects a maximum-entropy conditional distribution centered at the projected student transport velocity with teacher-derived covariance.
+
+Let $\bz_T$ and $\bz_S$ denote the projected teacher and student transport velocities across layer--sample pairs. We write $p=p(\bz_T\!\mid\!\bz_S)$ for their induced conditional distribution and $q_{\theta_s}^{\star} =q_{\theta_s}^{\star}(\bz_T\!\mid\!\bz_S)$ for the student-dependent conditional surrogate. FAD is formulated as
+\begin{equation}
+\begin{aligned}
+  &\theta_s^\star
+  \in
+  \operatorname*{arg\,max}_{\theta_s\in\Theta_{\mathrm{shared}}}
+  \Bigl[
+    I_p(\bz_T;\bz_S)
+    - \E_{\bz_S}
+    \KL\!\bigl(
+      p\,\big\|\,q^\star_{\theta_s}
+    \bigr)
+  \Bigr]\\[2pt]
+  &\text{s.t.}\quad
+  q^\star_{\theta_s}
+  \in
+  \operatorname*{arg\,max}_{q\in\calQ_{\theta_s}^{(\ell)}}
+  H_q\!\bigl(
+    \bz_T^{(\ell)}
+    \mid
+    \bz_S^{(\ell)}
+  \bigr)
+\end{aligned}
+\label{eq:bilevel}
+\end{equation}
+
+For each layer, the inner problem uses the fixed teacher covariance $\bSigma_T^{(\ell)}$ defined in
+\eqref{eq:teacher-covariance} and optimizes over conditional distributions
+satisfying
+\begin{equation}
+\begin{aligned}
+  \calQ_{\theta_s}^{(\ell)}
+  =
+  \Bigl\{\, q:\;
+    &\E_q\!\left[
+      \bz_T^{(\ell)}
+      \mid
+      \bz_S^{(\ell)}
+    \right]
+    =
+    \bz_S^{(\ell)},\\
+    &\Cov_q\!\left[
+      \bz_T^{(\ell)}
+      \mid
+      \bz_S^{(\ell)}
+    \right]
+    =
+    \bSigma_T^{(\ell)}
+  \Bigr\}
+\end{aligned}
+\label{eq:conditional-set}
+\end{equation}
+
+The first constraint centers the conditional distribution at the projected student transport velocity, while the second fixes its directional spread using the teacher-derived covariance. Therefore, $\bSigma_T^{(\ell)}$ is a fixed covariance imposed on the surrogate rather than an estimate of the true conditional covariance of $\bz_T^{(\ell)}$ given $\bz_S^{(\ell)}$.
+%==================================================
+The mutual information $I_p(\bz_T;\bz_S)$ measures how strongly the projected student transport predicts the corresponding teacher transport:
+\[
+I_p(\bz_T;\bz_S)
+=
+H_p(\bz_T)
+-
+H_p(\bz_T\!\mid\!\bz_S).
+\]
+Because the marginal teacher entropy $H_p(\bz_T)$ is  fixed, preserving teacher transport information amounts to reducing the conditional uncertainty of $\bz_T$ given $\bz_S$. However, the true conditional distribution $p(\bz_T\!\mid\!\bz_S)$ is generally unavailable. Introducing the conditional surrogate $q_{\theta_s}^{\star}(\bz_T\!\mid\!\bz_S)$ yields the Barber--Agakov variational lower bound~\citep{barber2003im,poole2019variational}:
+\begin{equation}
+\begin{aligned}
+  &I_p(\bz_T;\bz_S)
+  -
+  \E_{\bz_S}
+  \KL\!\bigl(
+    p
+    \,\big\|\,
+    q^\star_{\theta_s}
+  \bigr)\\
+  &\qquad =
+  H_p(\bz_T)
+  +
+  \E_p\!\bigl[
+    \log q^\star_{\theta_s}
+  \bigr]
+\end{aligned}
+\label{eq:ba}
+\end{equation}
+Because $H_p(\bz_T)$ is independent of the student parameters, maximizing the lower bound is equivalent to maximizing $\E_p[\log q^\star_{\theta_s}]$, or equivalently minimizing $\E_p[-\log q^\star_{\theta_s}]$.
+However, the variational bound holds for any admissible conditional distribution $q$, so the outer objective alone does not determine the surrogate. FAD therefore selects $q_{\theta_s}^{\star}$ by maximizing the conditional entropy over the set in \eqref{eq:conditional-set}, without introducing an additional inference network.
+
+Solving the inner problem with Lagrange multipliers first yields a Gibbs--Boltzmann conditional distribution. Under the specified conditional center and covariance, its exponent becomes quadratic and the normalized solution is exactly Gaussian:
+\begin{equation}
+\begin{aligned}
+  q^\star_{\theta_s}\!\bigl(
+    \bz_T^{(\ell)}
+    \mid
+    \bz_S^{(\ell)}
+  \bigr)
+  &=
+  \frac{1}{Z_T^{(\ell)}}
+  \exp\!\Bigl[
+    -\frac{1}{2}
+    \bigl(
+      \bz_T^{(\ell)}-\bz_S^{(\ell)}
+    \bigr)^{\!\top}\\[-2pt]
+  &\qquad\qquad
+    \bigl(
+      \bSigma_T^{(\ell)}
+    \bigr)^{-1}
+    \bigl(
+      \bz_T^{(\ell)}-\bz_S^{(\ell)}
+    \bigr)
+  \Bigr]\\
+  &=
+  \calN\!\bigl(
+    \bz_T^{(\ell)};
+    \bz_S^{(\ell)},
+    \bSigma_T^{(\ell)}
+  \bigr),
+\end{aligned}
+\label{eq:inner-gauss}
+\end{equation}
+where $Z_T^{(\ell)}$ is the Gaussian normalization factor determined by the fixed teacher covariance.
+
+%==================================================
+The negative log-density of this surrogate separates into a
+student-dependent quadratic deviation and a teacher-fixed normalization term:
+\begin{equation}
+\begin{aligned}
+  &-\log
+  q^\star_{\theta_s}\!\bigl(
+    \bz_T^{(\ell)}
+    \mid
+    \bz_S^{(\ell)}
+  \bigr)\\
+  &\qquad =
+  \frac{1}{2}
+  \left\|
+    \bigl(
+      \bSigma_T^{(\ell)}
+    \bigr)^{-1/2}
+    \bigl(
+      \bz_S^{(\ell)}
+      -
+      \bz_T^{(\ell)}
+    \bigr)
+  \right\|_2^2
+  +
+  C_T^{(\ell)},
+\end{aligned}
+\label{eq:gaussian-nll}
+\end{equation}
+where
+\[
+C_T^{(\ell)}
+=
+\frac{1}{2}
+\log\!\left[
+  (2\pi)^r
+  \left|
+    \bSigma_T^{(\ell)}
+  \right|
+\right]
+\]
+is independent of the student parameters.
+
+Substituting \eqref{eq:inner-gauss} into the variational bound \eqref{eq:ba}, dropping terms independent of the student parameters, and removing the positive factor $1/2$ reduces the outer problem to minimizing the expected teacher-standardized transport deviation:
+\begin{equation}
+  \theta_s^\star
+  \in
+  \operatorname*{arg\,min}_{\theta_s\in\Theta_{\mathrm{shared}}}
+  \E_p\!\left[
+    \left\|
+      \bigl(
+        \bSigma_T^{(\ell)}
+      \bigr)^{-1/2}
+      \bigl(
+        \bz_S^{(\ell)}
+        -
+        \bz_T^{(\ell)}
+      \bigr)
+    \right\|_2^2
+  \right]
+\label{eq:outer-reduction}
+\end{equation}
+
+Because $\bSigma_T^{(\ell)}$ is diagonal, the teacher-standardized
+transport deviation decomposes coordinate-wise as
+\begin{equation}
+  \left\|
+    \bigl(
+      \bSigma_T^{(\ell)}
+    \bigr)^{-1/2}
+    \bigl(
+      \bz_S^{(\ell)}
+      -
+      \bz_T^{(\ell)}
+    \bigr)
+  \right\|_2^2
+  =
+  \sum_{j=1}^{r}
+  \frac{
+    \bigl(
+      z_{S,j}^{(\ell)}
+      -
+      z_{T,j}^{(\ell)}
+    \bigr)^2
+  }{
+    \sigma_{T,j}^{2,(\ell)}
+    +
+    \epsilon
+  }.
+  \label{eq:directional-standardization}
+\end{equation}
+Each coordinate difference is first normalized by the corresponding regularized teacher standard deviation $\sqrt{\sigma_{T,j}^{2,(\ell)}+\epsilon}$. After squaring, its contribution is weighted by the inverse regularized teacher variance. Consequently, directions with smaller teacher variance receive greater weight, whereas directions with larger teacher variance receive less.
+
+\begin{definition}[Flow-Aligned Distillation Loss]
+Let $\calS\subseteq[L]$ denote the supervised layers. The FAD loss averages the teacher-standardized squared transport deviation over supervised layers and training samples:
+\begin{equation}
+  \calL_{\FAD}
+  =
+  \frac{1}{|\calS|}
+  \sum_{\ell\in\calS}
+  \E_n\!\left[
+    \left\|
+      \bigl(
+        \bSigma_T^{(\ell)}
+      \bigr)^{-1/2}
+      \bigl(
+        \bz_{S,n}^{(\ell)}
+        -
+        \bz_{T,n}^{(\ell)}
+      \bigr)
+    \right\|_2^2
+  \right]
+\label{eq:fad}
+\end{equation}
+\end{definition}
+
+Minimizing $\calL_{\FAD}$ aligns the projected student transport velocity with the corresponding teacher transport under the teacher-derived directional scales. The full training objective combines this layer-wise alignment with task cross-entropy:
+\begin{equation}
+  \theta_s^\star
+  =
+  \operatorname*{arg\,min}_{\theta_s\in\Theta_{\mathrm{shared}}}
+  \calL_{\CE}
+  +
+  \lambda_{\FAD}\calL_{\FAD}
+\label{eq:objective}
+\end{equation}
+
+Here, $\calL_{\CE}$ preserves task-level predictions, while
+$\calL_{\FAD}$ preserves the teacher-standardized FFN transport at the supervised layers. Although \eqref{eq:fad} has the form of a weighted squared error, its weighting and functional form follow directly from the variational objective and the maximum-entropy inner solution.
+
+%==================================================
+% ---------------------------------------------------------------
+\subsection{Shared-FFN Construction and Parameter Sharing}
+\label{sec:assign}
+% ---------------------------------------------------------------
+
+
+The student replaces the $L$ independent teacher FFNs with
+$K\!\ll\!L$ FFNs whose weights are shared across assigned layers. The sharing assignment $g:[L]\!\to\![K]$ maps each layer $\ell$ to one set of shared FFN weights $\Theta_{\FFN}^{g(\ell)}$.
+
+The assignment is determined offline through a functional replacement test. To evaluate whether the FFN weights from layer $\ell$ can be reused at layer $\ell'$, we temporarily replace the FFN at layer $\ell'$ with that of layer $\ell$ and run the complete model on a held-out calibration set. The directed replacement cost is defined as
+\begin{equation}
+\begin{aligned}
+  C_{\ell\to\ell'}
+  &=
+  \Delta\mathrm{NLL}_{\ell\to\ell'}
+  +
+  \lambda_{\KL}
+  D_{\KL}\!\left(
+    p_{\mathrm{base}}
+    \,\middle\|\,
+    p_{\ell\to\ell'}
+  \right),
+  \\
+  \Delta\mathrm{NLL}_{\ell\to\ell'}
+  &=
+  \mathrm{NLL}_{\ell\to\ell'}
+  -
+  \mathrm{NLL}_{\mathrm{base}}
+\end{aligned}
+\label{eq:replace-cost}
+\end{equation}
+We set $\lambda_{\KL}=1$ in all experiments.
+Here, $p_{\mathrm{base}}$ denotes the final predictive distribution of the
+original teacher, while $p_{\ell\to\ell'}$ denotes the distribution after
+replacing the FFN at layer $\ell'$ with the weights from layer $\ell$.
+The NLL difference measures the change in predictive loss, whereas the KL
+term measures the deviation of the full output distribution from the original
+teacher. Their sum therefore defines an end-to-end functional replacement
+cost. Because the replaced update propagates through all subsequent layers,
+this cost captures the final behavioral effect of the replacement rather than
+only a local hidden-state difference.
+
+Replacement compatibility is directional: using the FFN from layer $\ell$
+at layer $\ell'$ need not produce the same effect as the reverse replacement.
+We therefore define their bidirectional cost by the worse direction:
+\begin{equation}
+  C_{\ell\ell'}
+  =
+  \max\!\left(
+    C_{\ell\to\ell'},
+    C_{\ell'\to\ell}
+  \right)
+  \label{eq:bidirectional-cost}
+\end{equation}
+A small $C_{\ell\ell'}$ indicates that the two FFNs are mutually replaceable
+with limited end-to-end degradation.
+
+The sharing groups are constructed by complete-link agglomerative merging.
+Starting from individual layers, the cost between two current groups is taken
+as the largest bidirectional replacement cost across all layer pairs belonging
+to the two groups. At each iteration, the group pair with the smallest such
+cost is merged. This process continues until $K$ groups remain, yielding
+$g(\ell)=k$ for every layer $\ell$ assigned to group $\mathcal G_k$.
+The resulting policy therefore groups layers whose FFN weights remain
+mutually reusable under end-to-end replacement.
+
+For each final group, the shared weights are initialized from the teacher FFN
+having the lowest average bidirectional replacement cost to the other layers
+in that group. This provides a representative initialization for all layers
+assigned to the same shared weights.
+
+Mutual replaceability, however, does not imply that grouped layers realize
+identical FFN updates. Applying the same weights at different depths can still
+introduce a layer- and sample-specific mismatch in
+$\Delta h^{(\ell)}$. Therefore, every layer retains its own private low-rank
+adapter, including layers assigned to the same sharing group.
+
+The adapter is placed in parallel with the shared FFN branch and directly
+models the layer-specific functional variation lost through weight sharing:
+\begin{equation}
+  \Delta h_S^{(\ell)}
+  =
+  \underbrace{
+    F\!\left(
+      x^{(\ell)};
+      \Theta_{\FFN}^{g(\ell)}
+    \right)
+  }_{\text{shared FFN transformation}}
+  +
+  \underbrace{
+    B^{(\ell)}A^{(\ell)}x^{(\ell)}
+  }_{\text{layer-specific correction}}
+  \label{eq:student-ffn}
+\end{equation}
+where
+$A^{(\ell)}\!\in\!\R^{\rho\times D}$ and
+$B^{(\ell)}\!\in\!\R^{D\times\rho}$ form a private rank-$\rho$ adapter,
+with $\rho=64$. The adapter branches are initialized to produce zero
+correction, while attention parameters and the residual-stream structure
+remain unchanged.
+
+The shared weights capture reusable FFN behavior across layers, while each
+private adapter compensates for the local functional mismatch introduced by
+sharing. Because the adapter contributes additively to
+$\Delta h_S^{(\ell)}$, it directly models the depth-specific variation in the
+realized FFN residual update without altering the shared weights.
+
+The resulting student transport
+$v_S^{(\ell)}=\Delta h_S^{(\ell)}$ is aligned with the corresponding teacher
+transport $v_T^{(\ell)}=\Delta h_T^{(\ell)}$ through the FAD loss in
+\eqref{eq:fad}. The replacement-based policy determines which FFN weights are
+shared, while the private adapters and FAD objective recover the functional
+variation that remains after sharing.
+%==================================================
+
+\section{Experiments}
+\label{sec:experiments}
+% ===============================================================
+\subsection{Setup}
+\label{sec:setup}
+We train on \texttt{commonsense\_170k} ($161{,}899$ train / $8{,}521$ val),
+whose teacher FFN updates are the transport targets, and evaluate three
+backbones---\textbf{Qwen-3.5} ($L\!=\!24\!\to\!1.73$B),
+\textbf{Llama-3.2-3B} ($L\!=\!28$, $2.25$/$3$B), and \textbf{Llama-3.1-8B}
+($L\!=\!32$, $7.01$/$6.48$/$5.95$/$5.24$B)---each against its teacher,
+fine-tuned with low-rank adaptation (LoRA)~\citep{hu2022lora}.
+
+We report zero-shot multiple-choice accuracy (log-probability scoring) on seven
+commonsense benchmarks (PIQA~\citep{bisk2020piqa},
+HellaSwag~\citep{zellers2019hellaswag},
+WinoGrande~\citep{sakaguchi2021winogrande},
+Social-IQa~\citep{sap2019socialiqa}, ARC-Challenge/Easy,
+OpenBookQA~\citep{mihaylov2018openbookqa}), against the LoRA teacher and the
+matched-compression baselines FLAP~\citep{flap},
+Tyr-the-Pruner~\citep{Li2025TyrThePruner}, and
+LLM-Streamline~\citep{chen2025streamlining}. All methods share the teacher
+checkpoint, data split, budget, prompts, and harness. Table~\ref{tab:matched-baselines}
+reports the designated single-model checkpoints at each matched budget; for the
+representative $20\%$ Llama-3.2-3B setting we additionally report mean and
+standard deviation over seeds 42/43/44.
+
+% ---------------------------------------------------------------
+\subsection{Main Results}
+\label{sec:main}
+% ---------------------------------------------------------------
+Across four operating points on Llama-3.1-8B, the $6.48$B and $5.95$B students
+($27.5\%$/$36.9\%$ FFN compression) match or exceed the teacher on average
+($0.8710$/$0.8726$ vs.\ $0.8617$), only the most aggressive $5.24$B point falling
+below (Table~\ref{tab:llama8b-ops}); on Qwen-3.5 a per-task envelope (an oracle
+upper bound, not a deployable model) reaches $+2.4$ points over the LoRA teacher
+(Table~\ref{tab:qwen2b}).
+
+
+% ---------------------------------------------------------------
+\subsection{Comparison with Compression Baselines}
+\label{sec:baselines}
+% ---------------------------------------------------------------
+Under the unified harness,
+Table~\ref{tab:matched-baselines} isolates the compression design. FAD attains
+the best average accuracy on both Llama backbones---Llama-3.1-8B at
+$15\%$/$20\%$ and Llama-3.2-3B at $15\%$/$25\%$ FFN compression---with only OBQA
+at $20\%$ on Llama-3.1-8B favouring LLM-Streamline; at the $25\%$ 3B point it
+reaches $85.03\%$, $+3.78$ over LLM-Streamline and $+2.74$ over the merged
+teacher.
+
+\begin{table}[t]
+\centering\small
+\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+\textbf{Backbone} & \textbf{Budget} & \textbf{FLAP} & \textbf{Tyr} & \textbf{Streamline} & \textbf{FAD}\\
+\midrule
+Llama-3.1-8B & 15\% & 79.83 & 83.61 & 86.86 & \textbf{87.67}\\
+Llama-3.1-8B & 20\% & 76.99 & 81.72 & 86.87 & \textbf{87.66}\\
+Llama-3.2-3B & 15\% & 70.59 & 79.30 & 81.29 & \textbf{85.38}\\
+Llama-3.2-3B & 25\% & 63.89 & 72.71 & 81.25 & \textbf{85.03}\\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Matched-compression comparison}: macro-average accuracy (\%)
+over seven commonsense benchmarks at matched FFN budgets (single models).
+{FAD exceeds the corresponding dense teachers
+($86.17$/$82.29$ macro accuracy on 8B/3B). Per-task results in
+Appendix Table~\ref{tab:matched-full}; budget sensitivity in Fig.~\ref{fig:budget_curve} and Table~\ref{tab:budget_sensitivity}.}} \label{tab:matched-baselines}
+\end{table}
+
+To assess knowledge-intensive generalization beyond commonsense multiple-choice evaluation, we further evaluate MMLU across $57$ subjects under zero- and five-shot protocols at a matched $15\%$ FFN compression
+setting on Llama-3.1-8B (Table~\ref{tab:mmlu}). FAD is the only compressed method that matches or exceeds the merged LoRA teacher, improving accuracy by $0.41$ and $0.70$ points under the two protocols. FLAP and Tyr-the-Pruner
+trail the teacher by $9.9$--$13.9$ points, while LLM-Streamline trails FAD by $3.1$ and $2.6$ points, respectively.
+
+\begin{table}[t]
+\centering\small
+\renewcommand{\arraystretch}{0.95}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}l c c@{}}
+\toprule
+\textbf{Design} & \textbf{0-shot} & \textbf{5-shot}\\
+\midrule
+Dense teacher & 0.6072 & 0.6235\\
+\midrule
+FLAP & 0.5079 & 0.5130\\
+Tyr-the-Pruner & 0.4771 & 0.4846\\
+LLM-Streamline & 0.5801 & 0.6042\\
+FAD & \textbf{0.6113} & \textbf{0.6305}\\
+\bottomrule
+\end{tabular}
+\caption{\textbf{MMLU accuracy} on Llama-3.1-8B ($0$- and $5$-shot).
+{All compressed designs are at a matched $15\%$ FFN budget; FAD is the only
+one to match or exceed the dense teacher on both protocols (best in bold).}}
+\label{tab:mmlu}
+\end{table}
+
+Across additional FFN budgets on both Llama backbones
+(Fig.~\ref{fig:budget_curve} and Table~\ref{tab:budget_sensitivity}), FAD achieves the best average accuracy at all moderate settings: $10$--$20\%$ on Llama-3.1-8B and $15$--$25\%$ on Llama-3.2-3B. At the most aggressive $30\%$ setting on the 3B model, it slightly trails LLM-Streamline, indicating reduced robustness under the highest compression level considered.
+
+Over three seeds at the representative $20\%$ Llama-3.2-3B setting, FAD reaches
+$82.70\pm0.30\%$ macro accuracy, $1.07$ points over the strongest baseline
+LLM-Streamline ($81.64\pm0.16\%$), and the gain holds under every seed ($+0.92$,
+$+1.44$, $+0.84$) and all seven task-wise means.
+
+
+% ---------------------------------------------------------------
+\subsection{Runtime Exit Policy}
+\label{sec:runtime-exit}
+% ---------------------------------------------------------------
+FAD-compressed model can also cut \emph{inference-time} cost by exiting
+early once the answer distribution is stable. For the Llama-3.2-3B $25\%$
+checkpoint, with $17$ sets of shared FFN weights, we expose exits after layers
+$\{16,20,24\}$ (layer $28$ fallback) and distil an oracle confidence threshold
+(within $0.2$ points of full-depth accuracy) into a deployable \emph{calibrated
+adaptive-exit} controller
+(\textbf{FAD-AE}): it reads four runtime-observable answer-distribution features defined in Eq.~\ref{eq:useful4} and exits when the predicted exit probability passes a calibrated threshold---no teacher or task labels at deployment.
+
+\begin{table}[t]
+\centering\small
+\setlength{\tabcolsep}{7pt}\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Design} & \textbf{Macro Acc.} & \textbf{Speedup}\\
+\midrule
+Densed teacher          & 82.29 & $1.000\times$\\
+FAD (static, $25\%$)    & \textbf{85.03} & $0.908\times$\\
+FAD-AE ($25\%$)         & 84.94 & \textbf{$1.463\times$}\\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Runtime decomposition on Llama-3.2-3B at the $25\%$ FFN
+budget.} {Static FAD substantially improves accuracy but does not improve
+throughput; the calibrated adaptive-exit model (FAD-AE) achieves a
+$1.463\times$ task-wise geometric-mean speedup over the merged teacher while
+remaining within $0.10$ points of the full-depth FAD model.}}
+\label{tab:runtime-decomp}
+\end{table}
+
+{Table~\ref{tab:runtime-decomp} separates the two effects. Static FAD at the
+$25\%$ budget improves macro accuracy from $82.29\%$ to $85.03\%$, although its
+full-depth execution is slightly slower than the merged teacher ($0.908\times$
+task-wise geometric-mean throughput). FAD-AE reduces the average executed depth
+from $28$ to $16.39$ layers and achieves a $1.463\times$ geometric-mean speedup
+over the merged teacher (Fig.~\ref{fig:runtime-pareto}); its macro accuracy
+remains $84.94\%$, only $0.10$ points below static FAD and $2.64$ points above
+the teacher. Accuracy thus comes from static FAD and throughput from the early
+exits---two separable contributions. Relative to static FAD, adaptive exit improves aggregate throughput from
+$52.1$ to $81.8$ samples/s ($1.572\times$), with a $0.10$-point reduction in macro accuracy.
+
+{The advantage is not concentrated in a single dataset. On the $19{,}149$
+paired test questions, FAD-AE and the merged teacher both answer $15{,}890$
+correctly ($82.98\%$); FAD-AE uniquely answers $1{,}189$ ($6.21\%$) whereas the
+teacher uniquely answers $836$ ($4.37\%$), and both fail on $1{,}234$
+($6.44\%$), giving FAD-AE a net advantage of $353$ questions.}
+
+\begin{figure}[th] \centering
+\paperfig{Figure/runtime_pareto_25p.png}{0.9\linewidth}
+\caption{\textbf{Runtime Pareto frontier} on Llama-3.2-3B. {FAD-AE lies on
+the upper-right Pareto frontier, exceeding the merged teacher by $2.64$
+macro-accuracy points while achieving a $1.463\times$ task-wise geometric-mean
+inference speedup.}}
+\label{fig:runtime-pareto}
+\end{figure}
+
+
+% ---------------------------------------------------------------
+\subsection{Ablation Studies}
+\label{sec:ablation}
+% ---------------------------------------------------------------
+Following the theory's design order, we isolate FAD's four load-bearing
+components---the preserved variable, coordinate system, energy metric, and added
+objective---each under a matched shared-FFN structure, training set, and
+protocol.
+
+\emph{Preserved variable.} Replacing the FAD transport target with output-level
+KL distillation or generic hidden-state MSE, CE+FAD wins on every task and both
+student sizes, lifting macro accuracy to $0.8003$/$0.8382$ on the $2.25$/$3$B
+students versus at most $0.7360$ (CE+KL) and $0.8198$ (CE+Hidden-MSE): the feedforward residual transport, not the
+output distribution or a generic feature, is the load-bearing signal.
+
+\emph{Coordinate system.} With student, seed, rank, and schedule fixed, swapping
+the teacher-velocity PCA basis for a teacher hidden-state PCA or a random
+orthogonal one (Table~\ref{tab:projection-main}) costs $4.67$ and $9.06$ macro
+points---a strict ordering transport-specific $>$ generic teacher-state $>$
+arbitrary; the coordinates must follow the directions the network actually
+transports along.
+
+\begin{table}[t]
+\centering\small
+\renewcommand{\arraystretch}{0.98}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Projection basis} & \textbf{Avg.}
+& $\boldsymbol{\Delta}$ \textbf{vs. FAD} \\
+\midrule
+Random orthogonal          & 0.7504 & $-9.06$ pp \\
+Teacher hidden-state PCA   & 0.7943 & $-4.67$ pp \\
+Teacher velocity PCA (FAD) & \textbf{0.8410} & -- \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Coordinate-system ablation} under $13.4\%$ FFN compression
+(Llama-3.2-3B, seed 42). Only the source of the projection basis changes; all
+other factors are held fixed.}
+\label{tab:projection-main}
+\end{table}
+
+\emph{Teacher-derived metric.}
+Under the same $19$-group assignment over $28$ layers, replacing the teacher-derived metric
+$(\bSigma_T^{(\ell)})^{-1}$ with the isotropic metric $\bI$
+reduces macro accuracy from $0.8566$ to $0.7752$, a drop of
+$8.14$ points, and degrades all seven tasks
+(Table~\ref{tab:ablwhiten}). The diagonal teacher variances span nearly six orders of magnitude, showing that direction-dependent standardization is essential rather than cosmetic.
+
+\begin{table}[t]
+\centering\small
+\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.0}
+\begin{tabular}{l ccc}
+\toprule
+\textbf{Task} & \textbf{Isotropic ($I$)} & \textbf{Teacher cov. ($\bSigma_T$)} & \textbf{$\Delta$}\\
+\midrule
+PIQA   & 0.8395 & \textbf{0.8640} & $+2.45$\\
+SIQA   & 0.7400 & \textbf{0.7999} & $+5.99$\\
+HellaS & 0.8663 & \textbf{0.9459} & $+7.96$\\
+Wino   & 0.8066 & \textbf{0.8674} & $+6.08$\\
+ARC-C  & 0.6596 & \textbf{0.7824} & $+12.28$\\
+ARC-E  & 0.8047 & \textbf{0.8868} & $+8.21$\\
+OBQA   & 0.7100 & \textbf{0.8500} & $+14.00$\\
+\midrule
+\textbf{Macro} & 0.7752 & \textbf{0.8566} & $+8.14$\\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Energy-metric (whitening) ablation} (Llama-3.2-3B, $20\%$). {Identical $19/28$ shared-prototype structure, teacher, subspace,
+and data; the \emph{only} change is whether the FAD loss uses the
+teacher-induced metric $(\bSigma_T^{(\ell)})^{-1}$ or isotropic
+$\bSigma_T^{(\ell)}\!=\!\bI$. Whitening wins all seven tasks.}}
+\label{tab:ablwhiten}
+\end{table}
+
+\emph{Added objective.} Adding $\calL_{\FAD}$ to cross-entropy-only training
+improves all seven tasks, raising macro accuracy from $0.7760$ to $0.8766$ at
+$20\%$ compression; the shared bank ($K\!\ll\!L$ networks) also raises
+memory-normalised throughput and lowers peak memory while keeping
+time-to-first-token overhead below $4\%$.
+
+% ===============================================================
+\section{Conclusions}
+\label{sec:conclusion}
+
+
+We presented \textbf{Flow-Aligned Distillation}, which compresses LLMs by aligning teacher and student FFN residual transports in a teacher-derived subspace under a layer-wise directional metric. The resulting loss follows from a bilevel information-preservation objective with a maximum-entropy conditional surrogate. FAD outperforms matched compression baselines across the moderate operating budgets and remains competitive under the most aggressive setting. Combined with calibrated adaptive exit, it achieves a $1.463\times$ inference speedup while remaining within $0.10$ macro-accuracy points of the full-depth FAD model and exceeding the teacher by $2.64$ points.
+% ===============================================================
+% References
+% ===============================================================
+\bibliography{reference}
+% 
+
+\end{document}

@@ -1,0 +1,6 @@
+method,zero_shot_accuracy,five_shot_accuracy
+Dense teacher,0.6072,0.6235
+FLAP,0.5079,0.5130
+Tyr-the-Pruner,0.4771,0.4846
+LLM-Streamline,0.5801,0.6042
+FAD,0.6113,0.6305

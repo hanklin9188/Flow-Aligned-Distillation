@@ -1,8 +1,17 @@
 # FAD · Flow-Aligned Distillation 研究作品集
 
-[線上作品集](https://hanklin9188.github.io/FAD-Portfolio/) · [完整數據](docs/RESULTS.md) · [復現指南](reproduction/README.md) · [25% 部署指南](deployment/README.md)
+[英文首頁](README.md) · [完整數據](docs/RESULTS.md) · [復現指南](REPRODUCIBILITY.md) · [實驗腳本](reproduction/README.md) · [部署指南](deployment/README.md) · [限制與適用範圍](LIMITATIONS.md)
 
-這個 repo 將 FAD 的研究成果整理成可閱讀、可稽核、可復現、可展示的作品集。內容涵蓋 Llama-3.2-3B 的 15%、20%、25%、30% 結構壓縮、Adaptive Exit、三個論文方法的比較，以及 25% student 與 merged teacher 的網站部署範例。
+FAD 是一套針對 Llama-3.2-3B 的跨層 FFN 權重共用與功能恢復方法。它將 28 個 decoder layer 對應到較少的獨立 FFN 權重，再利用每層私有的低秩 adapter，對齊 teacher 定義的 projected FFN residual update。推論階段另有一個四特徵 controller，可在第 16、20、24 或 28 層提前結束。
+
+這個 repository 的重點不只是保存程式碼，而是提供一條可稽核的證據鏈：
+
+```text
+原始 evaluator / controller artifact
+→ processed CSV
+→ scripts/verify_data.py
+→ README 與結果文件
+```
 
 ## 最新選定結果
 
@@ -15,20 +24,61 @@
 | 25% | 17 / 28 | **85.03%** | **84.94%** | −0.10 pp | 16.39 | 41.47% |
 | 30% | 15 / 28 | **83.20%** | **82.89%** | −0.31 pp | 17.16 | 38.70% |
 
-25% 模型將 28 層對應到 17 組獨立 FFN：第 0–13、27 層各自保留；第 14–18 層共用一組，第 19–26 層共用另一組。這等同減少 11 組 FFN，約 0.83B 參數或原始 3.21B 模型的 25.8%。
+25% 的 archived H100 batch-1 runtime decomposition 需要區分兩個不同統計量：
 
-## 重要的數據稽核
+- **1.465× aggregate throughput ratio**。
+- **1.388× 七任務 task-wise geometric-mean speedup**。
 
-- 論文草稿把 `1.463×` 稱為 task-wise geometric mean；來源 JSON 顯示其實 **1.465× 是 aggregate throughput ratio**，真正的七任務 geometric mean 是 **1.388×**。作品集已分開標示。
-- 最新 FAD JSON 明確使用 `length_norm=none`；先前 baseline wrapper 預設為 `avg`，而舊 JSON 沒有保存此欄位。因此目前比較表保留論文時期結果，但嚴格的同協定結論仍需要全部重跑。公開腳本已統一成 `none`。
-- 19,149 題配對測試中，Adaptive student 答對 17,079 題，teacher 答對 16,726 題；student-only 正確 1,189 題、teacher-only 正確 836 題，淨差 +353。這是選擇題結果，不能直接外推到自由生成聊天。
+兩者不能互換，`scripts/verify_data.py` 會從 retained artifacts 重新計算。
 
-## 怎麼使用
+## 協定狀態
 
-- 想看每個檔案的用途：[`docs/FILE_GUIDE.md`](docs/FILE_GUIDE.md)
-- 想看每個 task 與 paper 比較：[`docs/RESULTS.md`](docs/RESULTS.md)
-- 想重跑四個壓縮率與 Adaptive Exit：[`reproduction/README.md`](reproduction/README.md)
-- 想部署 25% student + teacher：[`deployment/README.md`](deployment/README.md)
-- 想查實驗公平性與已知限制：[`docs/AUDIT.md`](docs/AUDIT.md)
+目前 FAD artifact 明確保存 `length_norm=none`。歷史 FLAP、Týr-the-Pruner 與 LLM-Streamline 結果則來自 paper-era workflow，當時 wrapper 的預設 normalization 與目前協定不完全相同。因此相關表格保留作為歷史比較背景，但在所有方法以同一個 frozen protocol 重跑前，不宣稱它們是完整的 apples-to-apples comparison。
 
-模型權重、完整 benchmark 與大型 paired-question 檔沒有公開；mock 展示介面保留 10 題 HellaSwag 範例、答案與歷史輸出，且清楚標示不是即時推論。部署所需三個 artifact 的 SHA-256 已寫在 `deployment/web-demo/models/README.md`。
+請先閱讀 [`docs/AUDIT.md`](docs/AUDIT.md) 與 [`LIMITATIONS.md`](LIMITATIONS.md) 再引用跨方法結論。
+
+## 不需要 GPU 的驗證
+
+```bash
+python scripts/verify_data.py
+```
+
+這個 verifier 會：
+
+- 從 raw artifacts 重算 macro accuracy；
+- 重算 aggregate 與 task-wise runtime summary；
+- 檢查 adaptive-exit 與 paired-question accounting；
+- 檢查網站內部連結；
+- 掃描常見 private path marker。
+
+也可以啟動不含模型權重的 mock deployment：
+
+```bash
+bash deployment/web-demo/start-mock.sh 8765 &
+server_pid=$!
+python deployment/web-demo/smoke_test.py --base_url http://127.0.0.1:8765
+kill "$server_pid"
+```
+
+Mock mode 只驗證 API 與介面 contract，不代表即時模型推論，也不能支持效能或模型品質結論。
+
+## 完整實驗
+
+完整 GPU reproduction 需要另外取得模型權重與資料集，並依 [`reproduction/README.md`](reproduction/README.md) 設定路徑。叢集實驗應透過 Slurm 提交，不在 login node 執行 GPU 或重型 CPU 工作：
+
+```bash
+sbatch reproduction/fad/slurm/fad_budgets.sbatch
+```
+
+## 目前狀態
+
+| 項目 | 狀態 |
+|---|---|
+| 公開數據一致性檢查 | **可執行且由 CI 強制** |
+| Weight-free deployment smoke test | **可執行且由 CI 強制** |
+| Selected FAD budget artifacts | **已公開** |
+| 歷史 baseline context | **已公開，附協定限制** |
+| 完整 matched baseline rerun | **尚未完成** |
+| 模型權重與完整資料集 | **刻意不重新散布** |
+
+公開文件不宣稱特定投稿、審查、錄取或 camera-ready 狀態。模型權重、完整 benchmark、大型 per-question records 與 deployable student bundle 也不包含在 repository 中。

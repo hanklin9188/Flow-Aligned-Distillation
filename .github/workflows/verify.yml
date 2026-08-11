@@ -1,0 +1,46 @@
+name: Verify research artifact
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  public-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Recompute public claims and validate repository links
+        run: python scripts/verify_data.py
+
+      - name: Exercise weight-free deployment contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash deployment/web-demo/start-mock.sh 8765 > /tmp/fad-mock.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; cat /tmp/fad-mock.log' EXIT
+          python - <<'PY'
+          import time
+          import urllib.request
+
+          url = "http://127.0.0.1:8765/api/health"
+          for _ in range(50):
+              try:
+                  with urllib.request.urlopen(url, timeout=1) as response:
+                      if response.status == 200:
+                          break
+              except Exception:
+                  time.sleep(0.1)
+          else:
+              raise SystemExit("mock server did not become healthy")
+          PY
+          python deployment/web-demo/smoke_test.py --base_url http://127.0.0.1:8765

@@ -1,74 +1,146 @@
+<div align="center">
+
 # FAD · Flow-Aligned Distillation
 
-**A reproducible research portfolio for shared-FFN LLM compression and calibrated adaptive exit.**
+### Reproducible cross-layer LLM compression with teacher-guided functional recovery and calibrated adaptive exit.
 
-[Live portfolio](https://hanklin9188.github.io/FAD-Portfolio/) · [繁體中文說明](README_zh-TW.md) · [Results](docs/RESULTS.md) · [Reproduce](reproduction/README.md) · [Deploy](deployment/README.md)
+[![Verify repository](https://github.com/hanklin9188/Flow-Aligned-Distillation/actions/workflows/verify.yml/badge.svg)](https://github.com/hanklin9188/Flow-Aligned-Distillation/actions/workflows/verify.yml)
+[![Research artifact](https://img.shields.io/badge/artifact-reproducible-2f6f62)](REPRODUCIBILITY.md)
+[![Protocol audit](https://img.shields.io/badge/protocol-audited-6b5ca5)](docs/AUDIT.md)
 
-![FAD teacher-to-student transport alignment](assets/figures/main.png)
+[繁體中文](README_zh-TW.md) · [Method](docs/METHOD.md) · [Results](docs/RESULTS.md) · [Reproduce](reproduction/README.md) · [Deploy](deployment/README.md)
 
-FAD compresses Llama-3.2-3B by mapping 28 decoder layers onto fewer unique FFN prototypes, then recovers the compressed model with decision-token cross entropy and a teacher-whitened transport objective. A four-feature controller chooses exit layer 16, 20, 24, or 28 at inference time.
+<img src="assets/figures/main.png" alt="FAD teacher-to-student transport alignment" width="100%">
 
-## Headline results
+</div>
 
-All values below are zero-shot macro accuracy over PIQA, Social-IQA, WinoGrande, ARC-Challenge, ARC-Easy, HellaSwag, and OpenBookQA. The FAD checkpoints are the latest seed-44 restricted-late selections found in the project artifacts.
+---
 
-| Compression | Unique FFNs | FAD static | FAD + adaptive exit | Accuracy change | Average exit | Layer saving |
+FAD reduces the number of independent feed-forward weight sets in Llama-3.2-3B, then trains layer-private low-rank adapters to recover the teacher's projected FFN residual updates. A separate four-feature controller can exit at layer 16, 20, 24, or 28 at inference time.
+
+This repository is organized as an **auditable research artifact**, not only a paper-code dump: selected raw outputs are retained, processed tables can be recomputed, protocol differences are disclosed, and a weight-free mock deployment can be exercised in CI.
+
+## What this project demonstrates
+
+- **Structural compression:** 28 decoder layers are mapped to fewer independent FFN weight sets.
+- **Functional recovery:** the student is supervised in a teacher-derived projected transport space with a teacher-defined per-direction scale.
+- **Deployment control:** adaptive exit trades computation for accuracy using an explicitly saved controller.
+- **Evidence discipline:** public claims are re-derived from archived artifacts by `scripts/verify_data.py`.
+- **Honest scope:** historical baseline results are separated from strictly current protocol claims.
+
+## Evidence snapshot
+
+The table below reports the selected FAD artifacts under the repository's seven-task zero-shot macro-accuracy protocol: PIQA, Social-IQA, WinoGrande, ARC-Challenge, ARC-Easy, HellaSwag, and OpenBookQA.
+
+| Compression | Independent FFNs | Static FAD | FAD + adaptive exit | Accuracy change | Average exit | Layer saving |
 |---:|---:|---:|---:|---:|---:|---:|
 | 15% | 22 / 28 | **85.38%** | **85.41%** | +0.04 pp | 17.32 | 38.16% |
 | 20% | 19 / 28 | **85.66%** | **85.53%** | −0.14 pp | 18.16 | 35.16% |
 | 25% | 17 / 28 | **85.03%** | **84.94%** | −0.10 pp | 16.39 | 41.47% |
 | 30% | 15 / 28 | **83.20%** | **82.89%** | −0.31 pp | 17.16 | 38.70% |
 
-At 25%, the matched H100 batch-1 run measures **1.465× aggregate throughput** and **1.388× task-wise geometric-mean speedup** versus the merged teacher. These are different metrics; both are preserved in [`runtime_25pct.csv`](data/processed/runtime_25pct.csv).
+For the archived 25% H100 batch-1 runtime decomposition, the repository distinguishes two different summaries:
 
-## Comparison with reproduced methods
+- **1.465× aggregate throughput ratio** versus the merged teacher.
+- **1.388× task-wise geometric-mean speedup** versus the merged teacher.
 
-| Method | 15% | 20% | 25% | 30% |
-|---|---:|---:|---:|---:|
-| [FLAP](https://github.com/CASIA-LMC-Lab/FLAP) | 70.59 | 68.00 | 63.89 | 57.87 |
-| [Týr-the-Pruner](https://github.com/AMD-AGI/Tyr-the-Pruner) | 79.30 | 76.16 | 72.71 | 64.54 |
-| [LLM-Streamline](https://github.com/RUCKBReasoning/LLM-Streamline) | 81.29 | 81.82 | 81.25 | 81.12 |
-| **FAD · latest selected** | **85.38** | **85.66** | **85.03** | **83.20** |
+Both values are recomputed from [`data/processed/runtime_25pct.csv`](data/processed/runtime_25pct.csv) and its source artifacts; they must not be interchanged.
 
-The archived baseline wrappers defaulted to answer-length normalization while current FAD artifacts explicitly record `length_norm=none`. The table preserves the paper-era runs, but it should not be presented as a strictly identical current protocol until all methods are rerun. The public wrappers now fix every method to `none`; see the [protocol audit](docs/AUDIT.md).
+## Protocol status
 
-## What is included
+### Current FAD artifact protocol
 
-```text
-FAD-Portfolio/
-├── index.html, styles.css, app.js     interactive GitHub Pages portfolio
-├── assets/                            paper figures and source manuscript
-├── data/raw/                          selected evaluator/controller artifacts
-├── data/processed/                    analysis-ready CSV tables
-├── reproduction/fad/                  FAD pipeline snapshot and launch scripts
-├── reproduction/baselines/            FLAP, Týr, Streamline adapters
-├── deployment/web-demo/               25% student + teacher inference demo
-├── docs/                              method, results, audit, and file guide
-└── scripts/verify_data.py              executable provenance checks
-```
+Current FAD evaluator artifacts explicitly record `length_norm=none`, and `scripts/verify_data.py` rejects a current FAD artifact that does not preserve this field.
 
-Start with the [file-by-file guide](docs/FILE_GUIDE.md). To inspect the static site locally:
+### Historical baseline context
 
-```bash
-python -m http.server 8000
-# open http://127.0.0.1:8000
-```
+The archived FLAP, Týr-the-Pruner, and LLM-Streamline runs were produced during the paper-era workflow. Their wrappers historically defaulted to answer-length normalization while the current public wrappers use `none`. The comparison remains useful as historical context, but it is **not presented as a fully matched current rerun** until every method is regenerated under one frozen protocol.
 
-To preview the model comparison UI without weights or a GPU:
+See [`docs/AUDIT.md`](docs/AUDIT.md) and [`LIMITATIONS.md`](LIMITATIONS.md) before citing a cross-method conclusion.
 
-```bash
-bash deployment/web-demo/start-mock.sh 8765
-python deployment/web-demo/smoke_test.py --base_url http://127.0.0.1:8765
-```
+## Verify without a GPU
 
-## Reproducibility boundary
-
-This repository includes code, configuration, compact raw result artifacts, figures, and ten curated HellaSwag examples with labels and historical outputs for the mock demo. It does **not** redistribute Meta Llama weights, merged teacher weights, the 25% student bundle, full benchmark corpora, or the full per-question benchmark record. Obtain each external asset under its own terms, then provide paths through environment variables. Expected model artifact checksums are listed in [`deployment/web-demo/models/README.md`](deployment/web-demo/models/README.md).
-
-Run the repository audit with:
+The repository's public integrity checks use only the standard Python library:
 
 ```bash
 python scripts/verify_data.py
 ```
 
-See [NOTICE.md](NOTICE.md) and [THIRD_PARTY.md](THIRD_PARTY.md) before reuse. No license is granted for unpublished FAD material by this repository.
+This recomputes the published macro scores and runtime ratios, validates paired-question accounting, checks local website links, and scans public text files for common private-path markers.
+
+The mock deployment can also be exercised without weights:
+
+```bash
+bash deployment/web-demo/start-mock.sh 8765 &
+server_pid=$!
+python deployment/web-demo/smoke_test.py --base_url http://127.0.0.1:8765
+kill "$server_pid"
+```
+
+GitHub Actions runs both paths on every push and pull request.
+
+## Reproduce the research workflow
+
+A complete GPU run requires separately obtained model weights and benchmark data. The repository provides launchers, configuration snapshots, baseline adapters, and a Slurm entry point; GPU experiments should be submitted through the scheduler rather than executed on a login node.
+
+```bash
+sbatch reproduction/fad/slurm/fad_budgets.sbatch
+```
+
+Start with [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) for boundaries and [`reproduction/README.md`](reproduction/README.md) for the executable workflow.
+
+## Repository map
+
+```text
+assets/                     figures and public research-artifact material
+data/raw/                   compact source artifacts retained for audit
+data/processed/             analysis-ready CSV tables
+deployment/web-demo/        weight-free mock and optional real deployment
+reproduction/fad/           FAD policy, training, evaluation, and Slurm entry points
+reproduction/baselines/     FLAP, Týr, and LLM-Streamline adapters
+scripts/verify_data.py       executable authority for public numeric claims
+docs/                       method, results, protocol audit, and file guide
+```
+
+For a file-by-file walkthrough, read [`docs/FILE_GUIDE.md`](docs/FILE_GUIDE.md).
+
+## Five-minute reviewer path
+
+1. Inspect the architecture figure above.
+2. Read [`docs/METHOD.md`](docs/METHOD.md) and [`docs/AUDIT.md`](docs/AUDIT.md).
+3. Run `python scripts/verify_data.py`.
+4. Inspect [`data/processed/runtime_25pct.csv`](data/processed/runtime_25pct.csv).
+5. Read [`LIMITATIONS.md`](LIMITATIONS.md) before interpreting cross-method or deployment claims.
+
+## Reproducibility boundary
+
+Included:
+
+- code and launch configuration;
+- compact raw and processed result artifacts;
+- provenance checks and protocol notes;
+- figures and a weight-free mock interface;
+- expected checksums for externally supplied deployment artifacts.
+
+Not redistributed:
+
+- Meta Llama weights or merged checkpoints;
+- the 25% deployable student bundle;
+- full benchmark corpora;
+- the complete per-question benchmark record;
+- private cluster paths, credentials, tokens, or scheduler outputs.
+
+## Project status
+
+| Area | Status |
+|---|---|
+| Public data-consistency audit | **Executable and CI-enforced** |
+| Weight-free deployment smoke test | **Executable and CI-enforced** |
+| Selected FAD budget artifacts | **Published** |
+| Historical baseline context | **Published with protocol caveat** |
+| Fully matched baseline rerun | **Pending** |
+| External model/data redistribution | **Intentionally excluded** |
+
+## License and attribution
+
+Original unpublished FAD material remains subject to [`NOTICE.md`](NOTICE.md). Third-party projects, models, and datasets retain their own terms; see [`THIRD_PARTY.md`](THIRD_PARTY.md). Citation metadata is provided in [`CITATION.cff`](CITATION.cff).

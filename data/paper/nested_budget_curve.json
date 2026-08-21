@@ -1,0 +1,47 @@
+{
+  "definition": "J_MI = C_T - 0.5 * L_FAD under the fixed teacher Gaussian conditional",
+  "loss_field": "compress_report.json:last_train_core_loss",
+  "accuracy_definition": "unweighted macro accuracy over seven tasks",
+  "rows": [
+    {
+      "k": 22,
+      "whole_model_compression_pct": 13.95,
+      "fad_loss": 0.10401996783912182,
+      "macro_accuracy_pct": 85.38185602149504,
+      "best_val_step": 4500,
+      "decision_val_loss": 0.22570400824224635,
+      "teacher": "llama32_3b_merged_teacher",
+      "report": "external/run_reports/k22/compress_report.json"
+    },
+    {
+      "k": 19,
+      "whole_model_compression_pct": 20.93,
+      "fad_loss": 0.12504581734538078,
+      "macro_accuracy_pct": 85.30386861513907,
+      "best_val_step": 4500,
+      "decision_val_loss": 0.2246328857336266,
+      "teacher": "llama32_3b_merged_teacher",
+      "report": "external/run_reports/k19/compress_report.json"
+    },
+    {
+      "k": 17,
+      "whole_model_compression_pct": 25.58,
+      "fad_loss": 0.14430249854922295,
+      "macro_accuracy_pct": 85.03251668068465,
+      "best_val_step": 4500,
+      "decision_val_loss": 0.22650206307662302,
+      "teacher": "llama32_3b_merged_teacher",
+      "report": "external/run_reports/k17/compress_report.json"
+    },
+    {
+      "k": 15,
+      "whole_model_compression_pct": 30.23,
+      "fad_loss": 0.17597755044698715,
+      "macro_accuracy_pct": 83.19922406062751,
+      "best_val_step": 4500,
+      "decision_val_loss": 0.27236549828194256,
+      "teacher": "llama32_3b_merged_teacher",
+      "report": "external/run_reports/k15/compress_report.json"
+    }
+  ]
+}

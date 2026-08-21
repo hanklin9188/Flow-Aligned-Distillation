@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "status": "audited-public-release",
+  "experiment_family": "fad_iclr2027_primary_k19",
+  "backbone": {
+    "model_id": "meta-llama/Llama-3.2-3B",
+    "revision": "13afe5124825b4f3751f836b40dafda64c1ed062"
+  },
+  "teacher": {
+    "artifact_id": "llama32_3b_commonsense_170k_merged_teacher",
+    "tree_sha256": "dc637f8330babb78ee6d290ec81e55468234aee386561eaf5316480a7819246c",
+    "lora_rank": 64,
+    "lora_alpha": 64,
+    "lora_dropout": 0.05,
+    "redistributed": false
+  },
+  "compression": {
+    "layers": 28,
+    "stored_ffn_banks": 19,
+    "dense_parameter_count": 3212749824,
+    "student_parameter_count": 2540350492,
+    "whole_model_reduction_pct": 20.92909092942806,
+    "private_adapter_rank": 128,
+    "private_adapter_alpha": 128,
+    "sharing_parameterization": "full_parallel",
+    "assignment_sha256": "2d1e57006efa647102568d39d82b6df7c593c0f66e8c73165abda68672ce5240"
+  },
+  "geometry": {
+    "tag": "opt3b_k19_r256_vel_full_s44",
+    "sha256": "684d0d46d5fbb361d72ea6b4e4e6da846ea51a71379ff3b2704687933232a53f",
+    "projection_rank": 256,
+    "coordinate_groups": 64,
+    "covariance": "layerwise_diagonal",
+    "epsilon": 1e-5,
+    "calibration_size": 170420,
+    "supervised_layers": "all",
+    "redistributed": false
+  },
+  "training": {
+    "dataset": "commonsense_170k",
+    "train_size": 136939,
+    "validation_size": 13421,
+    "optimizer": "AdamW",
+    "lr": 5e-5,
+    "lr_bank": 3e-5,
+    "lr_adapter": 8e-5,
+    "schedule": "warmup_cosine",
+    "warmup_steps": 750,
+    "weight_decay": 0.01,
+    "gradient_clip": 1.0,
+    "effective_batch_size": 32,
+    "sequence_length": 384,
+    "max_steps": 7500,
+    "checkpoint_selection_rule": "validation decision_ce",
+    "precision": "bf16 training / fp16 exported weights"
+  },
+  "evaluation": {
+    "lm_eval_version": "0.4.12",
+    "mmlu_examples": 14042,
+    "shots": [0, 5],
+    "anchor_seed": 44,
+    "commonsense_macro": 0.8530386861513908,
+    "mmlu_0": 0.5196553197550207,
+    "mmlu_5": 0.5410197977496083,
+    "piqa_exact_overlap_removed_for_mechanism_audit": 1,
+    "clean_piqa_size": 1837
+  },
+  "code": {
+    "source_commit": "0dd48774700c824ecd1891a30c048ac33849d765",
+    "pipeline_sha256": "7ecaafae78d0dec5518cba9d59ca32395a4e8a05508a73b325cac20d997e50c4"
+  },
+  "audit_notes": [
+    "The internal pre-release manifest mislabeled teacher LoRA rank/alpha as 128/128; adapter_config.json and the teacher training log establish 64/64.",
+    "The compressed student's private adapter is rank/alpha 128/128 and is distinct from the teacher LoRA.",
+    "Model weights, checkpoints, geometry tensors, datasets, and credentials are intentionally excluded."
+  ]
+}

@@ -2,12 +2,15 @@
 
 This document defines what can be verified from a clean checkout, what requires external assets, and what evidence is allowed to support a public claim.
 
+The current ICLR 2027 release adds `scripts/verify_paper_release.py`, the public primary manifest, all paper-referenced figures, and compact tables under `data/paper/`. The older adaptive-exit portfolio evidence remains available but is not mixed into the primary controlled objective study.
+
 ## 1. Verification tiers
 
 ### Tier A — public integrity checks, no GPU
 
 ```bash
 python scripts/verify_data.py
+python scripts/verify_paper_release.py
 ```
 
 The verifier re-derives the public FAD macro scores and runtime summaries from retained artifacts, validates adaptive-exit and paired-question accounting, checks website-local links, and rejects common private path markers.

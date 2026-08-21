@@ -1,5 +1,13 @@
 # Results and provenance
 
+## Current primary controlled objective study
+
+At the fixed Llama-3.2-3B `K=19` architecture (20.93% whole-model reduction), FAD reaches `47.55±3.84` MMLU 0-shot and `52.09±1.96` MMLU 5-shot across seeds 42/43/44. The strongest non-FAD objective, projected isotropic velocity matching, reaches `45.02±0.72` and `48.60±1.12`. FAD therefore gains 2.53/3.49 points in mean and wins all three seed-wise comparisons.
+
+The authoritative compact files are [`all_seed_results.csv`](../data/paper/all_seed_results.csv), [`training_seed_summary.csv`](../data/paper/training_seed_summary.csv), and the [public primary manifest](../experiments/iclr2027/provenance/primary_k19_manifest.json). The complete claim-to-artifact map is in [`EXPERIMENT_INDEX.md`](EXPERIMENT_INDEX.md).
+
+The budget sweep and adaptive-exit sections below are retained from the earlier portfolio artifact. They use separate checkpoint families and must not be substituted into the current controlled objective table.
+
 ## Latest Llama-3.2-3B budget sweep
 
 | Compression | PIQA | SIQA | Wino | ARC-C | ARC-E | Hella | OBQA | Macro |
@@ -53,4 +61,3 @@ The adaptive student's weighted accuracy is 89.19%, versus 87.35% for the teache
 - **Llama-3.2-3B, 20%, paper-designated seeds 42/43/44:** FAD 82.70±0.30, LLM-Streamline 81.64±0.16, Týr 75.42±1.11, FLAP 68.03±0.33.
 
 The machine-readable tables are [`paper_comparison.csv`](../data/processed/paper_comparison.csv), [`mmlu_8b_15pct.csv`](../data/processed/mmlu_8b_15pct.csv), and [`multiseed_3b_20pct.csv`](../data/processed/multiseed_3b_20pct.csv). The multi-seed table is the paper-designated experiment; the latest seed-44 budget sweep is a separate, newer checkpoint family and must not be substituted into its mean.
-

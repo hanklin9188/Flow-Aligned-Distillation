@@ -1,0 +1,6 @@
+policy,k,commonsense_macro_pct
+restricted_late,19,85.30
+random,19,82.52
+unrestricted_complete_link,19,80.36
+same_regime_complete_link,19,80.32
+adjacent,19,65.74

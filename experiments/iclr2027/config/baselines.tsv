@@ -1,0 +1,5 @@
+#label	model_path
+teacher_3b_064043	external/models/llama32_3b_merged_teacher
+flap_3b_20_s44	external/models/flap_3b_20_s44
+tyr_3b_20_s44	external/models/tyr_3b_20_s44
+streamline_3b_20_s44	external/models/streamline_3b_20_s44

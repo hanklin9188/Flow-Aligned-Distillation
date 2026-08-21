@@ -1,0 +1,14 @@
+{
+  "classification": "commonsense_is_in_domain_recovery; mechanism_PIQA_is_decontaminated",
+  "train_unique_records": 136939,
+  "validation_unique_records": 13421,
+  "train_validation_exact_overlap": 2726,
+  "original_piqa_records": 1838,
+  "piqa_exact_overlap_with_train_or_validation": 1,
+  "piqa_overlap_indices": [
+    1545
+  ],
+  "clean_piqa_records": 1837,
+  "clean_piqa_path": "experiments/iclr2027/provenance/piqa_heldout_clean.json",
+  "blocking_rule": "clean_piqa_records >= 256"
+}

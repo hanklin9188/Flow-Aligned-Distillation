@@ -1,0 +1,14 @@
+{
+  "metric": "layerwise diagonal teacher velocity covariance",
+  "minimum": 0.00008,
+  "maximum": 74.8,
+  "reported_log10_range_orders": 5.97,
+  "layer_condition_number_min_approx": 82,
+  "layer_condition_number_max_approx": 3845,
+  "source_tensor_redistributed": false,
+  "rendered_figures": [
+    "paper/Figure/teacher_scale_D_log_heatmap.png",
+    "paper/Figure/teacher_scale_inv_std_heatmap.png"
+  ],
+  "analysis_script": "experiments/iclr2027/analysis/analyze_teacher_scale.py"
+}

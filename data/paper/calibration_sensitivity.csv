@@ -1,0 +1,7 @@
+setting,commonsense_macro_pct
+1k_examples,85.21
+4k_examples,85.32
+16k_examples,85.47
+full_seed42,85.40
+full_seed43,85.22
+full_seed44,85.30

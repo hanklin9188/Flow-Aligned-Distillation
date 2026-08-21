@@ -1,0 +1,31 @@
+{
+  "source_matrix": "data/paper/replacement_cost.npy",
+  "matrix_shape": [
+    28,
+    28
+  ],
+  "cost_definition": "max(C_i_to_j, C_j_to_i)",
+  "finite_off_diagonal_entries": 756,
+  "value_min": 0.2596263252198696,
+  "value_median": 0.5251082861796021,
+  "value_max": 15.012097656726837,
+  "color_limits_percentiles": {
+    "p01": 0.31061563328839836,
+    "p99": 11.464302465319644
+  },
+  "colormap": "magma",
+  "primary_groups": [
+    [
+      16,
+      18
+    ],
+    [
+      19,
+      26
+    ]
+  ],
+  "depth_boundaries": [
+    9.5,
+    18.5
+  ]
+}

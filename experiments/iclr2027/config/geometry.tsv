@@ -1,0 +1,12 @@
+#key	K	rank	basis	max_records	calib_seed
+opt3b_k19_r256_vel_full_s44	19	256	velocity_pca	0	44
+opt3b_k19_r256_hidden_full_s44	19	256	hidden_pca	0	44
+opt3b_k19_r256_random_full_s44	19	256	random_orthogonal	0	44
+opt3b_k19_r32_vel_full_s44	19	32	velocity_pca	0	44
+opt3b_k19_r64_vel_full_s44	19	64	velocity_pca	0	44
+opt3b_k19_r128_vel_full_s44	19	128	velocity_pca	0	44
+opt3b_k19_r256_vel_1k_s44	19	256	velocity_pca	1000	44
+opt3b_k19_r256_vel_4k_s44	19	256	velocity_pca	4000	44
+opt3b_k19_r256_vel_16k_s44	19	256	velocity_pca	16000	44
+opt3b_k19_r256_vel_full_s42	19	256	velocity_pca	0	42
+opt3b_k19_r256_vel_full_s43	19	256	velocity_pca	0	43

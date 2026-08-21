@@ -1,12 +1,18 @@
 # Limitations and Claim Boundaries
 
+## Primary controlled study
+
+The current primary claim is based on six objectives and three independently trained seeds at one Llama-3.2-3B `K=19` architecture. Training-seed variability and evaluation-sample bootstrap uncertainty are separate quantities. This evidence does not establish dominance for every backbone, compression level, data distribution, or metric.
+
+FAD is task-aligned. The paper's C4 and WikiText-2 results show substantial generic-language degradation after structural recovery; mild C4 replay improves but does not eliminate that gap. At `K=17` and `K=15`, FAD is not the best MMLU objective, so the main conclusion is anchored at `K=19`.
+
 ## Historical baseline comparability
 
 The archived baseline results were produced during the paper-era workflow. Their historical answer-length-normalization behavior is not fully identical to the current FAD artifact protocol. They are retained for context, not represented as a completed matched rerun.
 
-## Selected checkpoints
+## Selected checkpoints and external comparisons
 
-The README snapshot reports selected artifacts rather than claiming that every table entry is a multi-seed estimate. Where multi-seed evidence exists, it should be cited from its dedicated artifact; otherwise a selected run must not be described as a population estimate.
+Only the primary objective table is a complete six-objective, three-seed comparison. Component interventions, transport diagnostics, projection/calibration sensitivity, external 3B/8B baselines, and some replay results are selected or single-run analyses unless explicitly labeled otherwise.
 
 ## Runtime scope
 
@@ -14,7 +20,7 @@ The archived 25% runtime decomposition is hardware-, precision-, batch-, impleme
 
 ## Evaluation scope
 
-The headline accuracy table covers seven zero-shot multiple-choice benchmarks. It does not establish free-form instruction quality, long-context behavior, safety, factuality, coding ability, or general chat quality.
+The controlled study covers seven in-domain multiple-choice tasks and MMLU 0-/5-shot evaluation. It does not establish free-form instruction quality, long-context behavior, safety, factuality, coding ability, or general chat quality.
 
 ## Adaptive exit scope
 

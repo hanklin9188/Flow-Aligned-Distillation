@@ -1,5 +1,18 @@
 # File guide
 
+## Current paper release
+
+| Path | Purpose |
+|---|---|
+| `paper/` | Current `fad.tex`, bibliography/style, and all 16 referenced figures. |
+| `data/paper/` | Compact current-paper result tables, plot inputs, and final audit JSON. |
+| `experiments/iclr2027/config/` | Audited geometry, training, and baseline configuration snapshots. |
+| `experiments/iclr2027/provenance/` | Public primary manifest and data-overlap audit. |
+| `experiments/iclr2027/analysis/` | Seed, covariance, teacher-scale, MMLU, and replacement-cost analyses. |
+| `scripts/generate_paper_figures.py` | Rebuilds 13 data-driven paper figures. |
+| `scripts/verify_paper_release.py` | Checks multi-seed statistics, figures, provenance ranks, private paths, and checkpoint exclusion. |
+| `docs/EXPERIMENT_INDEX.md` | Maps every empirical paper block to its data and code. |
+
 ## Portfolio website
 
 | Path | Purpose |
@@ -8,7 +21,7 @@
 | `styles.css` | Responsive visual system, theme, cards, charts, and gallery. |
 | `app.js` | Budget selector, exit distribution, SVG result chart, theme, and reveal behavior. |
 | `assets/figures/` | Web-optimized PNG previews generated from the supplied paper figures. |
-| `assets/paper/` | Original supplied PDF/PNG figures plus the manuscript and bibliography snapshot. |
+| `assets/paper/` | Legacy portfolio PDFs/PNGs retained for the website; not the current manuscript source. |
 
 ## Data
 

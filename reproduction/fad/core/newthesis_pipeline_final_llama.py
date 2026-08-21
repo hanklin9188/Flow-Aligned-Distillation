@@ -1461,6 +1461,7 @@ class SharedMLPAdapter(nn.Module):
         sharing_parameterization: str = "full_parallel",
         original_mlp: Optional[nn.Module] = None,
         intermediate_size: int = 0,
+        use_layer_scalar: bool = True,
     ):
         super().__init__()
         self.proto_id = int(proto_id)
@@ -1474,7 +1475,15 @@ class SharedMLPAdapter(nn.Module):
             raise ValueError(
                 f"unsupported sharing_parameterization={sharing_parameterization!r}"
             )
-        self.scale = nn.Parameter(torch.ones((1,), dtype=torch.float32))
+        # Legacy experiments learned one scalar per layer.  The ICLR current
+        # method explicitly removes that degree of freedom, so current-paper
+        # runs pass use_layer_scalar=False and have no scalar parameter at all.
+        self.use_layer_scalar = bool(use_layer_scalar)
+        self.scale = (
+            nn.Parameter(torch.ones((1,), dtype=torch.float32))
+            if self.use_layer_scalar
+            else None
+        )
         self.internal_rank = (
             int(max(0, lora_rank))
             if self.sharing_parameterization == "internal_weight_delta"
@@ -1552,7 +1561,7 @@ class SharedMLPAdapter(nn.Module):
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         base_out = self.forward_base(hidden_states)
-        out = base_out * self.scale
+        out = base_out * self.scale if self.scale is not None else base_out
         if self.lora_up is not None and self.lora_down is not None:
             out = out + self.lora_down(self.lora_up(hidden_states)) * self.lora_scaling
         return out
@@ -1740,6 +1749,162 @@ class LayerMixtureVariationalTransport(nn.Module):
             "delta_l2": delta_l2_loss,
             "target_layers": self.layer_covariance_diag.new_tensor(float(target_count)),
         }
+
+
+class PhaseAdaptiveProjectorBank(nn.Module):
+    """Training-only teacher/student charts in the 256-D FFN atlas space.
+
+    Teacher PCA charts are frozen.  Student charts start from the same bases
+    and learn coordinate corrections, so matching does not assume that the
+    compressed model retains the Teacher's exact hidden coordinates.  This
+    module is never installed in the exported inference model.
+    """
+
+    def __init__(self, state: Dict[str, Any], *, mode: str) -> None:
+        super().__init__()
+        normalized = str(mode).strip().lower()
+        if normalized not in {"fixed", "layer", "phase", "soft"}:
+            raise ValueError(f"unsupported phase projector mode={mode!r}")
+        self.mode = normalized
+        self.layers = tuple(int(value) for value in state["layers"])
+        self.layer_to_slot = {layer: slot for slot, layer in enumerate(self.layers)}
+        self.rank = int(state["rank"])
+        self.input_dim = int(state["input_dim"])
+        self.register_buffer("global_mean", state["global_mean"].float().contiguous())
+        self.register_buffer("global_basis", state["global_basis"].float().contiguous())
+        selected = torch.tensor(self.layers, dtype=torch.long)
+        self.register_buffer(
+            "layer_mean", state["layer_mean"].float().index_select(0, selected).contiguous()
+        )
+        self.register_buffer(
+            "layer_basis", state["layer_basis"].float().index_select(0, selected).contiguous()
+        )
+        self.register_buffer(
+            "phase_mean", state["phase_mean"].float().index_select(0, selected).contiguous()
+        )
+        self.register_buffer(
+            "phase_basis", state["phase_basis"].float().index_select(0, selected).contiguous()
+        )
+        if normalized == "fixed":
+            shape = (1, 1, self.input_dim, self.rank)
+        elif normalized == "layer":
+            shape = (len(self.layers), 1, self.input_dim, self.rank)
+        else:
+            shape = (len(self.layers), 4, self.input_dim, self.rank)
+        self.student_delta = nn.Parameter(torch.zeros(shape, dtype=torch.float32))
+
+    def config_dict(self) -> Dict[str, Any]:
+        return {
+            "family": "phase_adaptive_teacher_student_projector",
+            "mode": self.mode,
+            "layers": list(self.layers),
+            "input_dim": self.input_dim,
+            "rank": self.rank,
+            "trainable_parameters": int(self.student_delta.numel()),
+            "deployment_parameters": 0,
+        }
+
+    def _hard_chart(
+        self, z: torch.Tensor, layer_id: int, phase_ids: torch.Tensor, *, student: bool
+    ) -> torch.Tensor:
+        slot = self.layer_to_slot[int(layer_id)]
+        output = z.new_zeros((z.size(0), self.rank), dtype=torch.float32)
+        if self.mode == "fixed":
+            basis = self.global_basis + (self.student_delta[0, 0] if student else 0.0)
+            return (z.float() - self.global_mean.view(1, -1)) @ basis
+        if self.mode == "layer":
+            basis = self.layer_basis[slot] + (self.student_delta[slot, 0] if student else 0.0)
+            return (z.float() - self.layer_mean[slot].view(1, -1)) @ basis
+        for phase in range(4):
+            mask = phase_ids.eq(phase)
+            if not bool(mask.any().item()):
+                continue
+            basis = self.phase_basis[slot, phase]
+            if student:
+                basis = basis + self.student_delta[slot, phase]
+            output[mask] = (
+                z[mask].float() - self.phase_mean[slot, phase].view(1, -1)
+            ) @ basis
+        return output
+
+    def project(
+        self,
+        z: torch.Tensor,
+        layer_id: int,
+        phase_ids: torch.Tensor,
+        progress: torch.Tensor,
+        *,
+        student: bool,
+    ) -> torch.Tensor:
+        if self.mode != "soft":
+            return self._hard_chart(z, layer_id, phase_ids, student=student)
+        slot = self.layer_to_slot[int(layer_id)]
+        centers = progress.new_tensor([1.0 / 6.0, 0.5, 5.0 / 6.0, 1.0])
+        weights = torch.softmax(-((progress.view(-1, 1) - centers.view(1, -1)) / 0.16).pow(2), dim=1)
+        outputs = []
+        for phase in range(4):
+            basis = self.phase_basis[slot, phase]
+            if student:
+                basis = basis + self.student_delta[slot, phase]
+            outputs.append(
+                (z.float() - self.phase_mean[slot, phase].view(1, -1)) @ basis
+            )
+        stacked = torch.stack(outputs, dim=1)
+        return (stacked * weights.unsqueeze(-1)).sum(dim=1)
+
+    def forward(
+        self,
+        z_student: torch.Tensor,
+        z_teacher: torch.Tensor,
+        layer_id: int,
+        phase_ids: torch.Tensor,
+        progress: torch.Tensor,
+    ) -> Dict[str, torch.Tensor]:
+        student = self.project(
+            z_student, layer_id, phase_ids, progress, student=True
+        )
+        teacher = self.project(
+            z_teacher.detach(), layer_id, phase_ids, progress, student=False
+        ).detach()
+        student_unit = F.normalize(student, dim=-1, eps=1e-6)
+        teacher_unit = F.normalize(teacher, dim=-1, eps=1e-6)
+        cosine_loss = (1.0 - (student_unit * teacher_unit).sum(dim=-1)).mean()
+        teacher_scale = teacher.pow(2).mean(dim=-1, keepdim=True).sqrt().clamp(min=1e-4)
+        scale_loss = ((student - teacher) / teacher_scale).pow(2).mean()
+        if int(student.size(0)) >= 2:
+            relation_loss = (
+                (student_unit @ student_unit.T) - (teacher_unit @ teacher_unit.T)
+            ).pow(2).mean()
+        else:
+            relation_loss = cosine_loss.new_zeros(())
+        slot = self.layer_to_slot[int(layer_id)]
+        if self.mode == "fixed":
+            effective_bases = (self.global_basis + self.student_delta[0, 0]).unsqueeze(0)
+        elif self.mode == "layer":
+            effective_bases = (self.layer_basis[slot] + self.student_delta[slot, 0]).unsqueeze(0)
+        else:
+            effective_bases = self.phase_basis[slot] + self.student_delta[slot]
+        gram = effective_bases.transpose(-1, -2) @ effective_bases
+        identity = torch.eye(self.rank, device=gram.device, dtype=gram.dtype)
+        orthogonality_loss = (gram - identity).pow(2).mean()
+        delta_l2 = self.student_delta.pow(2).mean()
+        loss = (
+            cosine_loss
+            + 0.10 * scale_loss
+            + 0.10 * relation_loss
+            + 0.01 * orthogonality_loss
+            + 0.001 * delta_l2
+        )
+        return {
+            "loss": loss,
+            "cosine": 1.0 - cosine_loss,
+            "scale_loss": scale_loss,
+            "relation_loss": relation_loss,
+            "orthogonality_loss": orthogonality_loss,
+            "delta_l2": delta_l2,
+        }
+
+
 def _resolve_layers(model: nn.Module) -> Sequence[nn.Module]:
     model = unwrap_model(model)
     root = getattr(model, "model", model)
@@ -2287,6 +2452,8 @@ def apply_shared_ffn(
     layer_signatures: Optional[torch.Tensor] = None,
     policy_medoid_seed_layers: Optional[Dict[int, int]] = None,
     sharing_parameterization: str = "full_parallel",
+    use_layer_scalar: bool = True,
+    adapter_every_layer: bool = False,
 ) -> None:
     model = unwrap_model(model)
     layers = _resolve_layers(model)
@@ -2353,7 +2520,8 @@ def apply_shared_ffn(
         # only for genuinely shared groups.
         layer_lora_rank = (
             int(lora_rank)
-            if (
+            if bool(adapter_every_layer)
+            or (
                 proto_counts[proto_id] > 1
                 and int(layer_idx) != int(seed_layer_for_proto[proto_id])
             )
@@ -2368,6 +2536,7 @@ def apply_shared_ffn(
             sharing_parameterization=parameterization,
             original_mlp=original_mlps[layer_idx],
             intermediate_size=intermediate_size,
+            use_layer_scalar=bool(use_layer_scalar),
         )
         layer.mlp = layer.mlp.to(device=ref_device, dtype=ref_dtype)
 
@@ -2387,6 +2556,20 @@ def extract_shared_state(model: nn.Module, layer_to_proto: Sequence[int]) -> Dic
         adapter_state[str(layer_idx)] = adapter.export_state()
     return {
         "layer_to_proto": [int(x) for x in layer_to_proto],
+        "use_layer_scalar": bool(
+            any(
+                isinstance(layer.mlp, SharedMLPAdapter)
+                and layer.mlp.use_layer_scalar
+                for layer in layers
+            )
+        ),
+        "adapter_every_layer": bool(
+            all(
+                isinstance(layer.mlp, SharedMLPAdapter)
+                and layer.mlp.lora_rank > 0
+                for layer in layers
+            )
+        ),
         "sharing_parameterization": str(
             getattr(root, "shared_mlp_parameterization", "full_parallel")
         ),
@@ -2411,6 +2594,8 @@ def load_shared_state(
         sharing_parameterization=str(
             payload.get("sharing_parameterization", "full_parallel")
         ),
+        use_layer_scalar=bool(payload.get("use_layer_scalar", True)),
+        adapter_every_layer=bool(payload.get("adapter_every_layer", False)),
     )
     root = getattr(model, "model", model)
     bank = getattr(root, "shared_mlp_bank")
@@ -2974,7 +3159,8 @@ def initialize_internal_weight_delta_svd(
                     b_module,
                     local_seed=int(seed) + 1009 * layer_id + 97 * offset,
                 )
-            adapter.scale.fill_(1.0)
+            if adapter.scale is not None:
+                adapter.scale.fill_(1.0)
             stats[str(layer_id)] = {
                 "source_layer": source_layer,
                 "private_singleton": False,
@@ -4081,7 +4267,7 @@ def _select_core_token_positions(
     )
     mode = str(selection_mode or "last_pred").strip().lower()
     max_tokens = max(1, int(candidate_tokens))
-    if mode in {"response_all", "all_response", "response_pred", "all_pred", "all_tokens"} and prompt_lens is not None:
+    if mode in {"response_all", "all_response", "response_pred", "all_pred", "all_tokens", "phase_response"} and prompt_lens is not None:
         prompt_lens_device = prompt_lens.to(device=input_ids.device, dtype=torch.long).view(-1)
         batch_out: List[torch.Tensor] = []
         token_out: List[torch.Tensor] = []
@@ -4095,7 +4281,13 @@ def _select_core_token_positions(
             start = max(0, min(int(prompt_lens_device[batch_idx].item()) - 1, anchor))
             tokens = torch.arange(start, anchor + 1, device=input_ids.device, dtype=torch.long)
             if int(tokens.numel()) > max_tokens:
-                tokens = tokens[-max_tokens:]
+                if mode == "phase_response":
+                    select = torch.linspace(
+                        0, int(tokens.numel()) - 1, steps=max_tokens, device=tokens.device
+                    ).round().long().unique(sorted=True)
+                    tokens = tokens.index_select(0, select)
+                else:
+                    tokens = tokens[-max_tokens:]
             if tokens.numel() <= 0:
                 continue
             keep = attention_mask[batch_idx].to(dtype=torch.bool).gather(0, tokens)
@@ -4168,6 +4360,35 @@ def _select_core_token_positions(
         torch.cat(group_out, dim=0),
         torch.cat(anchor_out, dim=0),
     )
+
+
+def _phase_progress_for_selected_tokens(
+    *,
+    token_batch_indices: torch.Tensor,
+    token_indices: torch.Tensor,
+    prompt_lens: torch.Tensor,
+    attention_mask: torch.Tensor,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    phase_ids = torch.zeros_like(token_indices, dtype=torch.long)
+    progress = torch.zeros_like(token_indices, dtype=torch.float32)
+    prompt = prompt_lens.to(device=token_indices.device, dtype=torch.long).view(-1)
+    for row in range(int(token_indices.numel())):
+        batch = int(token_batch_indices[row].item())
+        start = max(0, int(prompt[batch].item()) - 1)
+        valid = int(attention_mask[batch].to(dtype=torch.long).sum().item())
+        end = max(start, valid - 2)
+        value = float(int(token_indices[row].item()) - start) / float(max(1, end - start))
+        value = min(1.0, max(0.0, value))
+        progress[row] = value
+        if int(token_indices[row].item()) >= end:
+            phase_ids[row] = 3
+        elif value <= 1.0 / 3.0:
+            phase_ids[row] = 0
+        elif value <= 2.0 / 3.0:
+            phase_ids[row] = 1
+        else:
+            phase_ids[row] = 2
+    return phase_ids, progress
 
 
 def _metric_inverse_sqrt(
@@ -4337,6 +4558,22 @@ def _resolve_tau_layer_ids(
     extra_topk: int = 0,
 ) -> List[int]:
     normalized = str(mode).strip().lower()
+    if normalized.startswith("layers:"):
+        raw = normalized.split(":", 1)[1].strip()
+        if not raw:
+            raise ValueError("Explicit core layer set must contain at least one zero-based layer id.")
+        try:
+            selected = sorted({int(value.strip()) for value in raw.split(",") if value.strip()})
+        except ValueError as exc:
+            raise ValueError(f"Invalid explicit core layer set: {mode!r}") from exc
+        invalid = [value for value in selected if value < 0 or value >= int(layer_count)]
+        if invalid:
+            raise ValueError(
+                f"Explicit core layer ids must be in 0..{int(layer_count) - 1}; got {invalid}."
+            )
+        if not selected:
+            raise ValueError("Explicit core layer set must contain at least one layer id.")
+        return selected
     if normalized == "all":
         return list(range(int(layer_count)))
     if normalized == "all_shared_layers":
@@ -4368,7 +4605,39 @@ def _resolve_tau_layer_ids(
                     selected.add(int(layer_id))
         return sorted(selected)
     raise ValueError(
-        f"Unsupported tau_layers={mode!r}. Use all/all_shared_layers/proto_seed_layers/proto_seed_plus_topk_error."
+        f"Unsupported tau_layers={mode!r}. Use all/all_shared_layers/proto_seed_layers/"
+        "proto_seed_plus_topk_error or layers:<zero-based comma-separated ids>."
+    )
+
+
+def _core_lambda_at_step(
+    *,
+    base_lambda: float,
+    schedule: str,
+    step: int,
+    total_steps: int,
+    warmup_ratio: float,
+    cutoff_ratio: float,
+) -> float:
+    """Resolve the FAD coefficient for one optimizer step (step is one-based)."""
+    base = max(0.0, float(base_lambda))
+    mode = str(schedule).strip().lower()
+    current = max(1, int(step))
+    total = max(1, int(total_steps))
+    if mode == "constant":
+        return base
+    if mode == "warmup":
+        warmup_steps = max(1, int(round(total * min(1.0, max(0.0, float(warmup_ratio))))))
+        return base * min(1.0, float(current) / float(warmup_steps))
+    if mode == "linear_decay":
+        if total <= 1:
+            return 0.0
+        return base * max(0.0, 1.0 - float(current - 1) / float(total - 1))
+    if mode in {"early_only", "early_then_ce"}:
+        cutoff_steps = max(1, int(round(total * min(1.0, max(0.0, float(cutoff_ratio))))))
+        return base if current <= cutoff_steps else 0.0
+    raise ValueError(
+        f"Unsupported core_lambda_schedule={schedule!r}; use constant/warmup/linear_decay/early_only."
     )
 
 
@@ -4542,7 +4811,7 @@ def _lambda_tau_at_step(
 def _run_compress_validation(
     *,
     student: nn.Module,
-    teacher: nn.Module,
+    teacher: Optional[nn.Module],
     loader: DataLoader,
     device: torch.device,
     pad_token_id: int,
@@ -4559,7 +4828,8 @@ def _run_compress_validation(
 ) -> Dict[str, Any]:
     prev_mode = bool(student.training)
     student.eval()
-    teacher.eval()
+    if teacher is not None:
+        teacher.eval()
     total_loss = 0.0
     total_ce = 0.0
     total_kd = 0.0
@@ -4583,6 +4853,8 @@ def _run_compress_validation(
     subspace_plot_prefix = ""
     subspace_layer_metric_diag: Optional[torch.Tensor] = None
     if subspace_enabled:
+        if teacher is None:
+            raise ValueError("validation subspace visualization requires a teacher model")
         subspace_layer_ids = [int(x) for x in subspace_viz_config.get("layer_ids", [])]
         subspace_regime_labels = [str(x) for x in subspace_viz_config.get("regime_labels", [])]
         subspace_regime_basis_device_map = {
@@ -4631,7 +4903,9 @@ def _run_compress_validation(
                 gold_candidate_index = gold_candidate_index.to(device)
             teacher_mlp_selected: Dict[int, torch.Tensor] = {}
             student_mlp_selected: Dict[int, torch.Tensor] = {}
+            t_out = None
             if subspace_enabled:
+                assert teacher is not None
                 batch_indices, token_indices = _select_single_token_positions(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
@@ -4649,7 +4923,7 @@ def _run_compress_validation(
                     capture_pre_ffn_input_layer_ids=None,
                     capture_residual_output_layer_ids=None,
                 )
-            else:
+            elif teacher is not None:
                 t_out = teacher(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
@@ -4676,7 +4950,7 @@ def _run_compress_validation(
                     use_cache=False,
                 )
             s_logits = s_out.logits.float()
-            t_logits = _extract_logits_from_model_output(t_out).float()
+            t_logits = _extract_logits_from_model_output(t_out).float() if t_out is not None else None
             scope_mask = shifted_target_mask(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
@@ -4728,14 +5002,15 @@ def _run_compress_validation(
                     eos_token_id=eos_token_id,
                 )
                 student_candidate_logits = decision_stats["candidate_logits"]
-                teacher_candidate_logits = candidate_decision_logits(
-                    logits=t_logits,
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    candidate_token_ids=candidate_token_ids,
-                    candidate_mask=candidate_mask,
-                    eos_token_id=eos_token_id,
-                )
+                if t_logits is not None:
+                    teacher_candidate_logits = candidate_decision_logits(
+                        logits=t_logits,
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        candidate_token_ids=candidate_token_ids,
+                        candidate_mask=candidate_mask,
+                        eos_token_id=eos_token_id,
+                    )
                 if str(loss_scope) == "decision":
                     ce_loss = decision_ce_loss
             else:
@@ -4746,6 +5021,8 @@ def _run_compress_validation(
                 )
             sage_stats: Dict[str, torch.Tensor] = {}
             if str(distill_mode) == "ce_kd" and float(lambda_kd) > 0.0:
+                if t_logits is None:
+                    raise RuntimeError("CE+KD validation requires teacher logits")
                 kd_loss = _kd_shift_masked_token_mean(
                     student_logits=s_logits,
                     teacher_logits=t_logits,
@@ -4976,10 +5253,13 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
     if not torch.is_tensor(basis) or basis.dim() != 2:
         raise RuntimeError("atlas_state missing valid basis [D, r].")
     basis_cpu = basis.detach().to(dtype=torch.float32, device="cpu").contiguous()
+    core_basis_mode = str(getattr(args, "core_basis_mode", "regime")).strip().lower()
+    if core_basis_mode not in {"global", "regime"}:
+        raise ValueError(f"Unsupported core_basis_mode={core_basis_mode!r}")
     regime_basis_cpu_map: Dict[str, torch.Tensor] = {
         name: basis_cpu for name in (list(dict.fromkeys([str(item).strip() or "llama_late" for item in regime_labels])) or ["llama_late"])
     }
-    if isinstance(prior_state, dict):
+    if isinstance(prior_state, dict) and core_basis_mode == "regime":
         prior_regime_basis = prior_state.get("regime_basis", None)
         if isinstance(prior_regime_basis, dict):
             for regime_name in list(regime_basis_cpu_map.keys()):
@@ -5033,6 +5313,29 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
     sharing_policy_path = sharing_policy_override or os.path.join(os.path.dirname(os.path.abspath(str(args.atlas_path))), "sharing_policy.json")
     training_stage = str(getattr(args, "training_stage", "compress")).strip().lower()
     lambda_core = max(0.0, float(getattr(args, "lambda_core", getattr(args, "lambda_tau_max", 0.0))))
+    core_lambda_schedule = str(getattr(args, "core_lambda_schedule", "constant")).strip().lower()
+    core_lambda_warmup_ratio = min(
+        1.0, max(0.0, float(getattr(args, "core_lambda_warmup_ratio", 0.1)))
+    )
+    core_lambda_cutoff_ratio = min(
+        1.0, max(0.0, float(getattr(args, "core_lambda_cutoff_ratio", 0.5)))
+    )
+    _core_lambda_at_step(
+        base_lambda=lambda_core,
+        schedule=core_lambda_schedule,
+        step=1,
+        total_steps=max(1, int(getattr(args, "steps", 1))),
+        warmup_ratio=core_lambda_warmup_ratio,
+        cutoff_ratio=core_lambda_cutoff_ratio,
+    )
+    core_coordinate_mode = str(
+        getattr(args, "core_coordinate_mode", "projected")
+    ).strip().lower()
+    if core_coordinate_mode not in {"projected", "ambient"}:
+        raise ValueError(
+            f"Unsupported core_coordinate_mode={core_coordinate_mode!r}; "
+            "use projected or ambient."
+        )
     lambda_hidden_mse = max(0.0, float(getattr(args, "lambda_hidden_mse", 1.0)))
     pass1_mode = training_stage == "pass1"
     if not pass1_mode:
@@ -5125,10 +5428,42 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
     if layer_mixture_lr <= 0.0:
         layer_mixture_lr = float(getattr(args, "lr_adapter", float(args.lr)))
     layer_mixture_enabled = float(lambda_layer_mixture) > 0.0
+    lambda_phase_adaptive_core = max(
+        0.0, float(getattr(args, "lambda_phase_adaptive_core", 0.0))
+    )
+    phase_projector_bank_path = str(
+        getattr(args, "phase_projector_bank_path", "")
+    ).strip()
+    phase_projector_mode = str(
+        getattr(args, "phase_projector_mode", "phase")
+    ).strip().lower()
+    phase_projector_lr = float(getattr(args, "phase_projector_lr", 0.0))
+    if phase_projector_lr <= 0.0:
+        phase_projector_lr = float(getattr(args, "lr_adapter", float(args.lr)))
+    phase_projector_enabled = lambda_phase_adaptive_core > 0.0
+    if phase_projector_enabled and not phase_projector_bank_path:
+        raise ValueError("--lambda_phase_adaptive_core>0 requires --phase_projector_bank_path")
     # Do not install/capture 28 layers of MLP hooks when the entire core term is
     # multiplied by zero. This was a large avoidable cost in SAGE job 259386.
-    tau_enabled = (float(lambda_core) > 0.0 or layer_mixture_enabled) and len(tau_layer_ids) > 0
+    tau_enabled = (
+        float(lambda_core) > 0.0
+        or layer_mixture_enabled
+        or phase_projector_enabled
+    ) and len(tau_layer_ids) > 0
     hidden_mse_enabled = _normalize_distill_mode(getattr(args, "distill_mode", "ce")) == "ce_hidden_mse" and lambda_hidden_mse > 0.0
+    teacher_free_ce = bool(getattr(args, "teacher_free_ce", False))
+    requested_distill_mode = _normalize_distill_mode(getattr(args, "distill_mode", "ce"))
+    if teacher_free_ce and (
+        requested_distill_mode != "ce"
+        or float(getattr(args, "lambda_kd", 0.0)) != 0.0
+        or float(lambda_hidden_mse) != 0.0
+        or bool(tau_enabled)
+        or bool(on_policy_enabled_resolved)
+    ):
+        raise ValueError(
+            "--teacher_free_ce requires distill_mode=ce, lambda_kd=0, "
+            "lambda_hidden_mse=0, lambda_core=0, and on-policy disabled"
+        )
     hidden_mse_layer_ids = list(tau_layer_ids)
     if hidden_mse_enabled and not hidden_mse_layer_ids:
         hidden_mse_layer_ids = list(range(layer_count))
@@ -5269,7 +5604,9 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         else str(args.teacher_ckpt).strip() or str(args.base_model).strip()
     )
     student_model_path = str(args.base_model).strip() or teacher_model_path
-    if not teacher_model_path:
+    if teacher_free_ce:
+        teacher_model_path = ""
+    if not teacher_model_path and not teacher_free_ce:
         raise ValueError("teacher model path is required (set --teacher_ckpt or --base_model).")
     if not student_model_path:
         raise ValueError("student model path is required (set --base_model or --teacher_ckpt).")
@@ -5285,7 +5622,13 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
     if setup_pbar is not None:
         setup_pbar.update(1)
 
-    if teacher_bundle is not None:
+    teacher: Optional[nn.Module] = None
+    if teacher_free_ce:
+        if teacher_bundle is not None:
+            raise ValueError("--teacher_free_ce cannot be combined with --teacher_deploy_bundle")
+        print("[Compress] teacher-free CE enabled: teacher loading and forward are skipped", flush=True)
+        teacher_quant_report = {"requested": False, "enabled": False, "skipped_teacher_free_ce": True}
+    elif teacher_bundle is not None:
         print(f"[Compress] loading shared deploy-bundle teacher: {teacher_deploy_bundle}", flush=True)
         teacher, teacher_quant_report = _build_shared_model_for_eval(
             base_model=teacher_model_path,
@@ -5305,15 +5648,16 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             trust_remote_code=bool(getattr(args, "trust_remote_code", False)),
         ).to(device)
         teacher_quant_report = {"requested": False, "enabled": False}
-    _set_gradient_checkpointing(
-        teacher,
-        enabled=bool(getattr(args, "teacher_gradient_checkpointing", False)),
-        require_input_grads=False,
-    )
-    _validate_supported_llama_config(teacher, label="compress teacher")
-    teacher.eval()
-    for param in teacher.parameters():
-        param.requires_grad_(False)
+    if teacher is not None:
+        _set_gradient_checkpointing(
+            teacher,
+            enabled=bool(getattr(args, "teacher_gradient_checkpointing", False)),
+            require_input_grads=False,
+        )
+        _validate_supported_llama_config(teacher, label="compress teacher")
+        teacher.eval()
+        for param in teacher.parameters():
+            param.requires_grad_(False)
     if setup_pbar is not None:
         setup_pbar.update(1)
 
@@ -5334,10 +5678,10 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         flush=True,
     )
     _validate_supported_llama_config(student, label="compress student/base")
-    teacher_layers = int(len(_resolve_layers(teacher)))
+    teacher_layers = int(len(_resolve_layers(teacher))) if teacher is not None else int(len(_resolve_layers(student)))
     student_layers = int(len(_resolve_layers(student)))
-    teacher_hidden = int(getattr(teacher.config, "hidden_size", 0) or 0)
     student_hidden = int(getattr(student.config, "hidden_size", 0) or 0)
+    teacher_hidden = int(getattr(teacher.config, "hidden_size", 0) or 0) if teacher is not None else student_hidden
     if teacher_layers != layer_count or student_layers != layer_count or teacher_hidden != atlas_hidden_size or student_hidden != atlas_hidden_size:
         raise ValueError(
             "Model architecture mismatch for Phase-1.5 shared-FFN compression.\n"
@@ -5371,6 +5715,8 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             sharing_parameterization=str(
                 getattr(args, "sharing_parameterization", "full_parallel")
             ),
+            use_layer_scalar=bool(getattr(args, "use_layer_scalar", True)),
+            adapter_every_layer=bool(getattr(args, "adapter_every_layer", False)),
         )
     print(
         f"[Compress] proto seed strategy={proto_seed_strategy} resolved={resolved_seed_strategy} "
@@ -5386,6 +5732,8 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         == "internal_weight_delta"
         and not init_shared
     ):
+        if teacher is None:
+            raise ValueError("internal_weight_delta initialization requires a teacher")
         internal_weight_delta_init_report = initialize_internal_weight_delta_svd(
             student=student,
             teacher=teacher,
@@ -5416,6 +5764,23 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             delta_l2=layer_mixture_delta_l2,
         ).to(device=device, dtype=torch.float32)
         layer_mixture_transport.train()
+    phase_projector_bank: Optional[nn.Module] = None
+    if phase_projector_enabled:
+        projector_state = torch.load(
+            phase_projector_bank_path, map_location="cpu", weights_only=False
+        )
+        phase_projector_bank = PhaseAdaptiveProjectorBank(
+            projector_state, mode=phase_projector_mode
+        ).to(device=device, dtype=torch.float32)
+        missing_layers = sorted(
+            set(int(value) for value in tau_layer_ids)
+            - set(unwrap_model(phase_projector_bank).layers)
+        )
+        if missing_layers:
+            raise ValueError(
+                f"phase projector bank misses supervised layers {missing_layers}"
+            )
+        phase_projector_bank.train()
     if dist_ctx.enabled:
         ddp_device_ids = [dist_ctx.local_rank] if device.type == "cuda" else None
         student = DDP(
@@ -5430,6 +5795,13 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                 device_ids=ddp_device_ids,
                 output_device=dist_ctx.local_rank if device.type == "cuda" else None,
                 find_unused_parameters=False,
+            )
+        if phase_projector_bank is not None:
+            phase_projector_bank = DDP(
+                phase_projector_bank,
+                device_ids=ddp_device_ids,
+                output_device=dist_ctx.local_rank if device.type == "cuda" else None,
+                find_unused_parameters=True,
             )
     if setup_pbar is not None:
         setup_pbar.update(1)
@@ -5495,6 +5867,8 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         "mode": residual_svd_init_mode,
     }
     if residual_svd_init_mode != "none":
+        if teacher is None:
+            raise ValueError("residual SVD initialization requires a teacher")
         residual_svd_init_report = initialize_shared_ffn_functional_residual_svd(
             student=student,
             teacher=teacher,
@@ -5559,6 +5933,15 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         if layer_mixture_transport is not None
         else []
     )
+    phase_projector_params = (
+        [
+            parameter
+            for parameter in unwrap_model(phase_projector_bank).parameters()
+            if parameter.requires_grad
+        ]
+        if phase_projector_bank is not None
+        else []
+    )
     optimizer_groups = []
     if bank_params:
         optimizer_groups.append({"params": bank_params, "lr": float(lr_bank), "name": "bank"})
@@ -5566,6 +5949,14 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         optimizer_groups.append({"params": adapter_params, "lr": float(lr_adapter), "name": "adapter"})
     if mixture_params:
         optimizer_groups.append({"params": mixture_params, "lr": float(layer_mixture_lr), "name": "mixture"})
+    if phase_projector_params:
+        optimizer_groups.append(
+            {
+                "params": phase_projector_params,
+                "lr": float(phase_projector_lr),
+                "name": "phase_projector",
+            }
+        )
     if not optimizer_groups:
         raise RuntimeError("No trainable parameters found for compression.")
     optimizer = torch.optim.AdamW(optimizer_groups, lr=float(args.lr), weight_decay=float(args.weight_decay))
@@ -5583,6 +5974,7 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         f"[Compress] trainable bank_params={sum(int(p.numel()) for p in bank_params)} "
         f"adapter_params={sum(int(p.numel()) for p in adapter_params)} "
         f"mixture_params={sum(int(p.numel()) for p in mixture_params)} "
+        f"phase_projector_params={sum(int(p.numel()) for p in phase_projector_params)} "
         f"init_shared={init_shared}",
         flush=True,
     )
@@ -5606,6 +5998,14 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             f"gate_hidden={layer_mixture_gate_hidden} lr={layer_mixture_lr:.6g} "
             f"covariance_trace_normalize={layer_mixture_covariance_trace_normalize} "
             f"groups={mixture_config['shared_groups']}",
+            flush=True,
+        )
+    if phase_projector_bank is not None:
+        print(
+            f"[Compress] phase_projector enabled=True "
+            f"lambda={lambda_phase_adaptive_core:.6g} "
+            f"lr={phase_projector_lr:.6g} "
+            f"config={unwrap_model(phase_projector_bank).config_dict()}",
             flush=True,
         )
     print(
@@ -5723,11 +6123,14 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         "layer_mixture_effective_components": 0.0,
         "layer_mixture_max_probability": 0.0,
         "layer_mixture_delta_l2": 0.0,
+        "phase_adaptive_core": 0.0,
+        "phase_adaptive_cosine": 0.0,
         "core_lambda": 0.0,
         "lr": 0.0,
         "lr_bank": 0.0,
         "lr_adapter": 0.0,
         "lr_mixture": 0.0,
+        "lr_phase_projector": 0.0,
     }
     log_every_steps = max(1, int(args.log_every))
     val_history: List[Dict[str, Any]] = []
@@ -5743,6 +6146,9 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
     last_on_policy_kd_loss = 0.0
     last_on_policy_core_loss = 0.0
     last_on_policy_gate = 0.0
+    on_policy_activation_count = 0
+    on_policy_activation_token_count = 0.0
+    on_policy_activation_gate_sum = 0.0
     last_core_lambda = 0.0
     last_response_ce_loss = 0.0
     last_decision_ce_loss = 0.0
@@ -5755,6 +6161,8 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
     last_layer_mixture_effective_components = 0.0
     last_layer_mixture_max_probability = 0.0
     last_layer_mixture_delta_l2 = 0.0
+    last_phase_adaptive_core_loss = 0.0
+    last_phase_adaptive_cosine = 0.0
     best_val_loss = float("inf")
     best_val_step = -1
     best_val_ckpt_path = os.path.join(ckpt_dir, "compress_best_val.pt")
@@ -5800,8 +6208,13 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             "training_stage": str(training_stage),
             "base_model": student_model_path,
             "teacher_model": teacher_model_path,
+            "teacher_free_ce": bool(teacher_free_ce),
             "teacher_deploy_bundle": str(teacher_deploy_bundle),
-            "teacher_loader_resolved": "shared_deploy_bundle" if teacher_bundle is not None else "native",
+            "teacher_loader_resolved": (
+                "skipped_teacher_free_ce"
+                if teacher_free_ce
+                else ("shared_deploy_bundle" if teacher_bundle is not None else "native")
+            ),
             "lora_rank": int(args.lora_rank),
             "lora_alpha": float(args.lora_alpha),
             "init_shared_student_ckpt": str(init_shared_student_ckpt),
@@ -5838,6 +6251,9 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             "val_include_step0_candidate": bool(val_include_step0_candidate),
             "val_min_improvement": float(val_min_improvement),
             "lambda_core": float(lambda_core),
+            "core_lambda_schedule": str(core_lambda_schedule),
+            "core_lambda_warmup_ratio": float(core_lambda_warmup_ratio),
+            "core_lambda_cutoff_ratio": float(core_lambda_cutoff_ratio),
             "core_metric_source": str(core_metric_source),
             "core_metric_diag_path": str(core_metric_diag_path),
             "core_metric_diag_mode": str(core_metric_diag_mode),
@@ -5861,6 +6277,16 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             "layer_mixture_config": (
                 unwrap_model(layer_mixture_transport).config_dict()
                 if layer_mixture_transport is not None
+                else {}
+            ),
+            "lambda_phase_adaptive_core": float(lambda_phase_adaptive_core),
+            "phase_projector_enabled": bool(phase_projector_bank is not None),
+            "phase_projector_bank_path": str(phase_projector_bank_path),
+            "phase_projector_mode": str(phase_projector_mode),
+            "phase_projector_lr": float(phase_projector_lr),
+            "phase_projector_config": (
+                unwrap_model(phase_projector_bank).config_dict()
+                if phase_projector_bank is not None
                 else {}
             ),
             "lambda_geodesic_core": float(lambda_geodesic_core),
@@ -5975,6 +6401,14 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                     if layer_mixture_transport is not None
                     else {}
                 )
+                best_val_phase_projector_state = (
+                    {
+                        key: value.detach().cpu()
+                        for key, value in unwrap_model(phase_projector_bank).state_dict().items()
+                    }
+                    if phase_projector_bank is not None
+                    else {}
+                )
                 torch.save(
                     {
                         "phase": "compress_best_val",
@@ -5985,6 +6419,7 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                         "meta": dict(best_val_meta),
                         "shared_state": best_val_shared_state,
                         "layer_mixture_transport_state": best_val_mixture_state,
+                        "phase_projector_state": best_val_phase_projector_state,
                     },
                     best_val_ckpt_path,
                 )
@@ -6061,6 +6496,9 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
 
     micro_in_accum = 0
     optimizer.zero_grad(set_to_none=True)
+    train_wall_t0 = time.perf_counter()
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
     while step < total_steps:
         if train_sampler is not None:
             train_sampler.set_epoch(int(args.seed) + epoch_idx)
@@ -6089,6 +6527,8 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             tau_token_indices: Optional[torch.Tensor] = None
             tau_group_ids: Optional[torch.Tensor] = None
             tau_anchor_mask: Optional[torch.Tensor] = None
+            tau_phase_ids: Optional[torch.Tensor] = None
+            tau_progress: Optional[torch.Tensor] = None
             need_token_select = tau_enabled or hidden_mse_enabled
             if need_token_select:
                 tau_batch_indices, tau_token_indices, tau_group_ids, tau_anchor_mask = _select_core_token_positions(
@@ -6100,6 +6540,17 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                     candidate_tokens=core_candidate_tokens if tau_enabled else 1,
                     prompt_lens=prompt_lens,
                 )
+                if phase_projector_bank is not None:
+                    if prompt_lens is None:
+                        raise RuntimeError(
+                            "phase-adaptive projector requires response prompt lengths"
+                        )
+                    tau_phase_ids, tau_progress = _phase_progress_for_selected_tokens(
+                        token_batch_indices=tau_batch_indices,
+                        token_indices=tau_token_indices,
+                        prompt_lens=prompt_lens,
+                        attention_mask=attention_mask,
+                    )
 
             need_capture = tau_enabled or hidden_mse_enabled
             capture_mlp_ids = sorted(set(tau_layer_ids)) if need_capture else None
@@ -6107,7 +6558,8 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             with torch.no_grad():
                 teacher_mlp_selected: Dict[int, torch.Tensor] = {}
                 teacher_hidden_selected: Optional[List[Optional[torch.Tensor]]] = None
-                if need_capture and tau_batch_indices is not None and tau_token_indices is not None:
+                t_out = None
+                if teacher is not None and need_capture and tau_batch_indices is not None and tau_token_indices is not None:
                     t_out, teacher_hidden_selected, teacher_mlp_selected, _, _ = _forward_with_selected_capture(
                         model=teacher,
                         input_ids=input_ids,
@@ -6119,7 +6571,7 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                         capture_pre_ffn_input_layer_ids=None,
                         capture_residual_output_layer_ids=None,
                     )
-                else:
+                elif teacher is not None:
                     t_out = teacher(
                         input_ids=input_ids,
                         attention_mask=attention_mask,
@@ -6151,7 +6603,7 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                     use_cache=False,
                 )
             s_logits = _extract_logits_from_model_output(s_out).float()
-            t_logits = _extract_logits_from_model_output(t_out).float()
+            t_logits = _extract_logits_from_model_output(t_out).float() if t_out is not None else None
 
             scope_mask = shifted_target_mask(
                 input_ids=input_ids,
@@ -6204,14 +6656,15 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                     eos_token_id=eos_token_id,
                 )
                 student_candidate_logits = decision_stats["candidate_logits"]
-                teacher_candidate_logits = candidate_decision_logits(
-                    logits=t_logits,
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    candidate_token_ids=candidate_token_ids,
-                    candidate_mask=candidate_mask,
-                    eos_token_id=eos_token_id,
-                )
+                if t_logits is not None:
+                    teacher_candidate_logits = candidate_decision_logits(
+                        logits=t_logits,
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        candidate_token_ids=candidate_token_ids,
+                        candidate_mask=candidate_mask,
+                        eos_token_id=eos_token_id,
+                    )
                 if loss_scope == "decision":
                     ce_loss = decision_ce_loss
             else:
@@ -6223,6 +6676,8 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             sage_stats: Dict[str, torch.Tensor] = {}
             teacher_coeff_now = float(kd_coeff)
             if distill_mode == "ce_kd" and kd_coeff > 0.0:
+                if t_logits is None:
+                    raise RuntimeError("CE+KD training requires teacher logits")
                 kd_loss = _kd_shift_masked_token_mean(
                     student_logits=s_logits,
                     teacher_logits=t_logits,
@@ -6298,8 +6753,12 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                         continue
                     layer_regime = str(regime_labels[int(layer_id)]) if int(layer_id) < len(regime_labels) else "llama_late"
                     layer_basis = regime_basis_device_map.get(layer_regime, basis_device)
-                    z_student_by_layer[int(layer_id)] = torch.matmul(s_ffn.to(dtype=torch.float32), layer_basis)
-                    z_teacher_by_layer[int(layer_id)] = torch.matmul(t_ffn.to(dtype=torch.float32), layer_basis)
+                    if core_coordinate_mode == "ambient":
+                        z_student_by_layer[int(layer_id)] = s_ffn.to(dtype=torch.float32)
+                        z_teacher_by_layer[int(layer_id)] = t_ffn.to(dtype=torch.float32)
+                    else:
+                        z_student_by_layer[int(layer_id)] = torch.matmul(s_ffn.to(dtype=torch.float32), layer_basis)
+                        z_teacher_by_layer[int(layer_id)] = torch.matmul(t_ffn.to(dtype=torch.float32), layer_basis)
                 core_token_weights = _compute_core_token_weights(
                     z_teacher_by_layer=z_teacher_by_layer,
                     tau_layer_ids=tau_layer_ids,
@@ -6344,6 +6803,9 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             layer_mixture_loss = layer_mixture_stats["loss"]
 
             core_loss = torch.zeros((), dtype=torch.float32, device=device)
+            phase_adaptive_core_loss = torch.zeros((), dtype=torch.float32, device=device)
+            phase_adaptive_cosine = torch.zeros((), dtype=torch.float32, device=device)
+            phase_adaptive_layers_used = 0
             point_core_loss = torch.zeros((), dtype=torch.float32, device=device)
             geodesic_core_loss = torch.zeros((), dtype=torch.float32, device=device)
             relational_core_loss = torch.zeros((), dtype=torch.float32, device=device)
@@ -6360,12 +6822,48 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             variance_weight_sum = 0.0
             token_flow_layers_used = 0
             token_flow_weight_sum = 0.0
+            if (
+                phase_projector_bank is not None
+                and tau_phase_ids is not None
+                and tau_progress is not None
+            ):
+                for layer_id in tau_layer_ids:
+                    z_s = z_student_by_layer.get(int(layer_id))
+                    z_t = z_teacher_by_layer.get(int(layer_id))
+                    if z_s is None or z_t is None:
+                        continue
+                    phase_stats = phase_projector_bank(
+                        z_s,
+                        z_t,
+                        int(layer_id),
+                        tau_phase_ids,
+                        tau_progress,
+                    )
+                    phase_adaptive_core_loss = (
+                        phase_adaptive_core_loss + phase_stats["loss"]
+                    )
+                    phase_adaptive_cosine = (
+                        phase_adaptive_cosine + phase_stats["cosine"]
+                    )
+                    phase_adaptive_layers_used += 1
+                if phase_adaptive_layers_used > 0:
+                    phase_adaptive_core_loss = phase_adaptive_core_loss / float(
+                        phase_adaptive_layers_used
+                    )
+                    phase_adaptive_cosine = phase_adaptive_cosine / float(
+                        phase_adaptive_layers_used
+                    )
             if tau_enabled:
                 for layer_id in tau_layer_ids:
                     z_s = z_student_by_layer.get(int(layer_id))
                     z_t = z_teacher_by_layer.get(int(layer_id))
                     if z_s is None or z_t is None:
                         continue
+                    if core_use_metric_whitening and core_coordinate_mode == "ambient":
+                        raise RuntimeError(
+                            "ambient velocity MSE must use an isotropic ambient metric; "
+                            "set core_use_metric_whitening=False"
+                        )
                     if core_use_metric_whitening:
                         metric_inv_std = _metric_inverse_sqrt(
                             layer_metric_diag_device[int(layer_id)].view(1, -1),
@@ -6652,13 +7150,21 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                     + float(lambda_manifold_core) * manifold_core_loss
                     + float(lambda_delta_manifold_core) * delta_manifold_core_loss
                 )
-            lambda_core_now = float(lambda_core)
+            lambda_core_now = _core_lambda_at_step(
+                base_lambda=lambda_core,
+                schedule=core_lambda_schedule,
+                step=pending_step,
+                total_steps=total_steps,
+                warmup_ratio=core_lambda_warmup_ratio,
+                cutoff_ratio=core_lambda_cutoff_ratio,
+            )
             loss = (
                 ce_coeff * ce_loss
                 + teacher_coeff_now * kd_loss
                 + float(lambda_hidden_mse) * hidden_loss
                 + float(lambda_core_now) * core_loss
                 + float(lambda_layer_mixture) * layer_mixture_loss
+                + float(lambda_phase_adaptive_core) * phase_adaptive_core_loss
             )
 
             should_optimizer_step = (micro_in_accum + 1) >= grad_accum_steps
@@ -6669,6 +7175,8 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                             backward_stack.enter_context(student.no_sync())
                         if isinstance(layer_mixture_transport, DDP):
                             backward_stack.enter_context(layer_mixture_transport.no_sync())
+                        if isinstance(phase_projector_bank, DDP):
+                            backward_stack.enter_context(phase_projector_bank.no_sync())
                     (loss / float(grad_accum_steps)).backward()
             finally:
                 if student_capture_handles:
@@ -6985,6 +7493,11 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                             except Exception:
                                 pass
 
+            if on_policy_active:
+                on_policy_activation_count += 1
+                on_policy_activation_token_count += float(on_policy_token_count)
+                on_policy_activation_gate_sum += float(on_policy_gate_mean)
+
             generic_replay_ce_loss = torch.zeros((), dtype=torch.float32, device=device)
             generic_replay_active = False
             if (
@@ -7036,7 +7549,9 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             micro_in_accum += 1
             should_optimizer_step = micro_in_accum >= grad_accum_steps
             if should_optimizer_step:
-                trainable_for_clip = bank_params + adapter_params + mixture_params
+                trainable_for_clip = (
+                    bank_params + adapter_params + mixture_params + phase_projector_params
+                )
                 torch.nn.utils.clip_grad_norm_(trainable_for_clip, float(args.grad_clip))
                 optimizer.step()
                 if scheduler is not None:
@@ -7080,6 +7595,12 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             layer_mixture_effective_components_item = dist_mean(float(layer_mixture_stats["effective_components"].item()), device, dist_ctx)
             layer_mixture_max_probability_item = dist_mean(float(layer_mixture_stats["max_probability"].item()), device, dist_ctx)
             layer_mixture_delta_l2_item = dist_mean(float(layer_mixture_stats["delta_l2"].item()), device, dist_ctx)
+            phase_adaptive_core_item = dist_mean(
+                float(phase_adaptive_core_loss.item()), device, dist_ctx
+            )
+            phase_adaptive_cosine_item = dist_mean(
+                float(phase_adaptive_cosine.item()), device, dist_ctx
+            )
             metric_scale = 1.0 / float(grad_accum_steps)
             running["loss"] += loss_item * metric_scale
             running["ce"] += ce_item * metric_scale
@@ -7113,11 +7634,14 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             running["layer_mixture_effective_components"] += layer_mixture_effective_components_item * metric_scale
             running["layer_mixture_max_probability"] += layer_mixture_max_probability_item * metric_scale
             running["layer_mixture_delta_l2"] += layer_mixture_delta_l2_item * metric_scale
+            running["phase_adaptive_core"] += phase_adaptive_core_item * metric_scale
+            running["phase_adaptive_cosine"] += phase_adaptive_cosine_item * metric_scale
             running["core_lambda"] += float(lambda_core_now) * metric_scale
             running["lr"] += float(lr_now) * metric_scale
             running["lr_bank"] += _first_param_group_lr(optimizer, "bank") * metric_scale
             running["lr_adapter"] += _first_param_group_lr(optimizer, "adapter") * metric_scale
             running["lr_mixture"] += _first_param_group_lr(optimizer, "mixture") * metric_scale
+            running["lr_phase_projector"] += _first_param_group_lr(optimizer, "phase_projector") * metric_scale
             last_core_loss = core_item
             last_point_core_loss = point_core_item
             last_geodesic_core_loss = geodesic_core_item
@@ -7142,6 +7666,8 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
             last_layer_mixture_effective_components = layer_mixture_effective_components_item
             last_layer_mixture_max_probability = layer_mixture_max_probability_item
             last_layer_mixture_delta_l2 = layer_mixture_delta_l2_item
+            last_phase_adaptive_core_loss = phase_adaptive_core_item
+            last_phase_adaptive_cosine = phase_adaptive_cosine_item
 
             if not should_optimizer_step:
                 continue
@@ -7180,11 +7706,14 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                 avg_layer_mixture_effective_components = running["layer_mixture_effective_components"] / denom
                 avg_layer_mixture_max_probability = running["layer_mixture_max_probability"] / denom
                 avg_layer_mixture_delta_l2 = running["layer_mixture_delta_l2"] / denom
+                avg_phase_adaptive_core = running["phase_adaptive_core"] / denom
+                avg_phase_adaptive_cosine = running["phase_adaptive_cosine"] / denom
                 avg_core_lambda = running["core_lambda"] / denom
                 avg_lr = running["lr"] / denom
                 avg_lr_bank = running["lr_bank"] / denom
                 avg_lr_adapter = running["lr_adapter"] / denom
                 avg_lr_mixture = running["lr_mixture"] / denom
+                avg_lr_phase_projector = running["lr_phase_projector"] / denom
                 if pbar is not None:
                     postfix = {
                         "loss": f"{avg_loss:.4f}",
@@ -7205,6 +7734,7 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                         "dmani": f"{avg_delta_manifold_core:.2e}",
                         "mix": f"{avg_layer_mixture:.3f}",
                         "Hmix": f"{avg_layer_mixture_entropy:.2f}",
+                        "phase": f"{avg_phase_adaptive_core:.3f}",
                         "l_core": f"{avg_core_lambda:.3f}",
                         "lr": f"{avg_lr:.2e}",
                     }
@@ -7239,6 +7769,9 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                         f"mixture_effective_components={avg_layer_mixture_effective_components:.4f} "
                         f"mixture_max_probability={avg_layer_mixture_max_probability:.4f} "
                         f"mixture_delta_l2={avg_layer_mixture_delta_l2:.6e} "
+                        f"phase_adaptive_core={avg_phase_adaptive_core:.6f} "
+                        f"phase_adaptive_cosine={avg_phase_adaptive_cosine:.6f} "
+                        f"lambda_phase_adaptive_core={float(lambda_phase_adaptive_core):.6f} "
                         f"lambda_layer_mixture={float(lambda_layer_mixture):.6f} "
                         f"lambda_geodesic_core={float(lambda_geodesic_core):.4f} "
                         f"lambda_relational_core={float(lambda_relational_core):.4f} "
@@ -7249,7 +7782,8 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                         f"lambda_core={avg_core_lambda:.4f} "
                         f"lr={avg_lr:.2e} "
                         f"lr_bank={avg_lr_bank:.2e} lr_adapter={avg_lr_adapter:.2e} "
-                        f"lr_mixture={avg_lr_mixture:.2e}",
+                        f"lr_mixture={avg_lr_mixture:.2e} "
+                        f"lr_phase_projector={avg_lr_phase_projector:.2e}",
                         flush=True,
                     )
                 running = {
@@ -7285,11 +7819,14 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                     "layer_mixture_effective_components": 0.0,
                     "layer_mixture_max_probability": 0.0,
                     "layer_mixture_delta_l2": 0.0,
+                    "phase_adaptive_core": 0.0,
+                    "phase_adaptive_cosine": 0.0,
                     "core_lambda": 0.0,
                     "lr": 0.0,
                     "lr_bank": 0.0,
                     "lr_adapter": 0.0,
                     "lr_mixture": 0.0,
+                    "lr_phase_projector": 0.0,
                 }
 
             if val_every > 0 and step % int(val_every) == 0:
@@ -7308,6 +7845,15 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         best_mixture_state = best_ckpt.get("layer_mixture_transport_state", {})
         if layer_mixture_transport is not None and isinstance(best_mixture_state, dict) and best_mixture_state:
             unwrap_model(layer_mixture_transport).load_state_dict(best_mixture_state, strict=True)
+        best_phase_projector_state = best_ckpt.get("phase_projector_state", {})
+        if (
+            phase_projector_bank is not None
+            and isinstance(best_phase_projector_state, dict)
+            and best_phase_projector_state
+        ):
+            unwrap_model(phase_projector_bank).load_state_dict(
+                best_phase_projector_state, strict=True
+            )
         print(
             f"[Compress] using best-val checkpoint: step={best_val_step} "
             f"{val_selection_metric}={best_val_loss:.4f} "
@@ -7328,6 +7874,12 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         used_best_val_ckpt=bool(use_best_val),
     )
 
+    train_wall_elapsed_sec = max(1e-9, time.perf_counter() - train_wall_t0)
+    peak_gpu_memory_bytes = (
+        int(torch.cuda.max_memory_allocated(device)) if device.type == "cuda" else 0
+    )
+    effective_global_batch = int(args.batch_size) * int(dist_ctx.world_size) * int(grad_accum_steps)
+    measured_optimizer_steps = max(1, int(step))
     ckpt_path = os.path.join(output_dir, "shared_student.pt")
     report = {
         "training_stage": str(training_stage),
@@ -7337,11 +7889,18 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         "best_val_ckpt": best_val_ckpt_path if os.path.isfile(best_val_ckpt_path) else "",
         "base_model": student_model_path,
         "teacher_model": teacher_model_path,
+        "teacher_free_ce": bool(teacher_free_ce),
         "teacher_deploy_bundle": str(teacher_deploy_bundle),
-        "teacher_loader_resolved": "shared_deploy_bundle" if teacher_bundle is not None else "native",
+        "teacher_loader_resolved": (
+            "skipped_teacher_free_ce"
+            if teacher_free_ce
+            else ("shared_deploy_bundle" if teacher_bundle is not None else "native")
+        ),
         "teacher_quant_report": dict(teacher_quant_report),
         "lora_rank": int(args.lora_rank),
         "lora_alpha": float(args.lora_alpha),
+        "use_layer_scalar": bool(getattr(args, "use_layer_scalar", True)),
+        "adapter_every_layer": bool(getattr(args, "adapter_every_layer", False)),
         "sharing_parameterization": str(
             getattr(args, "sharing_parameterization", "full_parallel")
         ),
@@ -7372,7 +7931,12 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         "lambda_kd": float(kd_coeff),
         "kd_temperature": float(kd_temperature),
         "lambda_core": float(lambda_core),
+        "core_lambda_schedule": str(core_lambda_schedule),
+        "core_lambda_warmup_ratio": float(core_lambda_warmup_ratio),
+        "core_lambda_cutoff_ratio": float(core_lambda_cutoff_ratio),
         "core_metric_source": str(core_metric_source),
+        "core_coordinate_mode": str(core_coordinate_mode),
+        "core_basis_mode": str(core_basis_mode),
         "core_metric_diag_path": str(core_metric_diag_path),
         "core_metric_diag_mode": str(core_metric_diag_mode),
         "core_layer_ids": [int(x) for x in tau_layer_ids],
@@ -7395,6 +7959,16 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         "layer_mixture_config": (
             unwrap_model(layer_mixture_transport).config_dict()
             if layer_mixture_transport is not None
+            else {}
+        ),
+        "lambda_phase_adaptive_core": float(lambda_phase_adaptive_core),
+        "phase_projector_enabled": bool(phase_projector_bank is not None),
+        "phase_projector_bank_path": str(phase_projector_bank_path),
+        "phase_projector_mode": str(phase_projector_mode),
+        "phase_projector_lr": float(phase_projector_lr),
+        "phase_projector_config": (
+            unwrap_model(phase_projector_bank).config_dict()
+            if phase_projector_bank is not None
             else {}
         ),
         "lambda_geodesic_core": float(lambda_geodesic_core),
@@ -7429,6 +8003,13 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         "on_policy_final_answer_weight": float(on_policy_final_answer_weight),
         "on_policy_core_tokens": int(on_policy_core_tokens),
         "on_policy_ramp_steps": int(on_policy_ramp_steps),
+        "on_policy_activation_count": int(on_policy_activation_count),
+        "on_policy_activation_token_count": float(on_policy_activation_token_count),
+        "on_policy_activation_gate_mean": (
+            float(on_policy_activation_gate_sum) / float(on_policy_activation_count)
+            if on_policy_activation_count > 0
+            else 0.0
+        ),
         "lambda_manifold_core": float(lambda_manifold_core),
         "manifold_core_temperature": float(manifold_core_temperature),
         "manifold_core_enabled": bool(manifold_core_enabled),
@@ -7464,6 +8045,8 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         "last_train_layer_mixture_effective_components": float(last_layer_mixture_effective_components),
         "last_train_layer_mixture_max_probability": float(last_layer_mixture_max_probability),
         "last_train_layer_mixture_delta_l2": float(last_layer_mixture_delta_l2),
+        "last_train_phase_adaptive_core_loss": float(last_phase_adaptive_core_loss),
+        "last_train_phase_adaptive_cosine": float(last_phase_adaptive_cosine),
         "last_train_lambda_core": float(last_core_lambda),
         "weight_decay": float(args.weight_decay),
         "val_data_path": val_data_path,
@@ -7478,6 +8061,10 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         "best_val_loss": float(best_val_loss) if best_val_step >= 0 else None,
         "used_best_val_ckpt": bool(use_best_val),
         "actual_final_step": int(step),
+        "training_wall_elapsed_sec": float(train_wall_elapsed_sec),
+        "training_ms_per_optimizer_step": float(1000.0 * train_wall_elapsed_sec / measured_optimizer_steps),
+        "training_examples_per_sec": float(effective_global_batch * measured_optimizer_steps / train_wall_elapsed_sec),
+        "peak_gpu_memory_bytes_local_rank": int(peak_gpu_memory_bytes),
         "world_size": int(dist_ctx.world_size),
         "per_rank_batch_size": int(args.batch_size),
         "global_batch_size": int(args.batch_size) * int(dist_ctx.world_size),
@@ -7489,6 +8076,10 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
         report["val_history_path"] = val_history_path
         report["val_last"] = val_history[-1]
     report_path = os.path.join(output_dir, "compress_report.json")
+    if bool(getattr(args, "on_policy_require_activation", False)) and int(on_policy_activation_count) <= 0:
+        raise RuntimeError(
+            "on-policy activation was required, but no training step activated the on-policy channel"
+        )
     if is_main_process(dist_ctx):
         torch.save(payload, ckpt_path)
         if layer_mixture_transport is not None:
@@ -7507,6 +8098,24 @@ def stage_compress(args: argparse.Namespace) -> Dict[str, Any]:
                 mixture_state_path,
             )
             report["layer_mixture_state_path"] = mixture_state_path
+        if phase_projector_bank is not None:
+            phase_projector_state_path = os.path.join(
+                output_dir, "phase_projector_student.pt"
+            )
+            torch.save(
+                {
+                    "training_only": True,
+                    "exported_for_inference": False,
+                    "selected_step": int(best_val_step if use_best_val else step),
+                    "config": unwrap_model(phase_projector_bank).config_dict(),
+                    "state_dict": {
+                        key: value.detach().cpu()
+                        for key, value in unwrap_model(phase_projector_bank).state_dict().items()
+                    },
+                },
+                phase_projector_state_path,
+            )
+            report["phase_projector_state_path"] = phase_projector_state_path
         if val_history:
             save_json(val_history_path, {"history": val_history})
         save_json(report_path, report)
@@ -9561,6 +10170,8 @@ def _add_training_args_final(p: argparse.ArgumentParser) -> None:
     p.add_argument("--sharing_policy_path", type=str, default="")
     p.add_argument("--output_dir", type=str, default="")
     p.add_argument("--private_down_rank", type=int, default=64)
+    p.add_argument("--use_layer_scalar", type=str2bool, default=True)
+    p.add_argument("--adapter_every_layer", type=str2bool, default=False)
     p.add_argument(
         "--sharing_parameterization",
         type=str,
@@ -9593,6 +10204,7 @@ def _add_training_args_final(p: argparse.ArgumentParser) -> None:
     p.add_argument("--lr_min_ratio", type=float, default=0.01)
     p.add_argument("--weight_decay", type=float, default=0.01)
     p.add_argument("--distill_mode", type=str, default="ce_kd", choices=["ce", "ce_kd", "ce+kd", "sage_ib", "sage-ib", "ce_hidden_mse", "ce-hidden-mse", "hidden_mse"])
+    p.add_argument("--teacher_free_ce", type=str2bool, default=False)
     p.add_argument("--lambda_ce", type=float, default=1.0)
     p.add_argument("--lambda_kd", type=float, default=0.3)
     p.add_argument("--kd_temperature", type=float, default=2.0)
@@ -9610,14 +10222,24 @@ def _add_training_args_final(p: argparse.ArgumentParser) -> None:
     p.add_argument("--sage_rate_min_ratio", type=float, default=0.10)
     p.add_argument("--lambda_hidden_mse", type=float, default=1.0)
     p.add_argument("--lambda_core", type=float, default=0.12)
-    p.add_argument("--core_layers", type=str, default="all_shared_layers", choices=["all", "all_shared_layers", "proto_seed_layers", "proto_seed_plus_topk_error"])
+    p.add_argument("--core_lambda_schedule", type=str, default="constant", choices=["constant", "warmup", "linear_decay", "early_only", "early_then_ce"])
+    p.add_argument("--core_lambda_warmup_ratio", type=float, default=0.1)
+    p.add_argument("--core_lambda_cutoff_ratio", type=float, default=0.5)
+    p.add_argument("--core_layers", type=str, default="all_shared_layers")
     p.add_argument("--core_metric_eps", type=float, default=1e-5)
     p.add_argument("--core_use_metric_whitening", type=str2bool, default=True)
+    p.add_argument(
+        "--core_coordinate_mode",
+        type=str,
+        default="projected",
+        choices=["projected", "ambient"],
+    )
+    p.add_argument("--core_basis_mode", choices=["global", "regime"], default="regime")
     p.add_argument("--core_metric_trace_normalize", type=str2bool, default=False)
     p.add_argument("--core_metric_diag_path", type=str, default="")
     p.add_argument("--core_metric_diag_mode", type=str, default="covariance", choices=["covariance", "precision"])
     p.add_argument("--core_use_reliability_weighting", type=str2bool, default=True)
-    p.add_argument("--core_token_selection", type=str, default="last_pred", choices=["last_pred", "single", "anchor", "response_all", "all_response", "response_pred", "all_pred", "all_tokens", "iets", "iets_softmax", "iets_topk", "energy", "energy_softmax"])
+    p.add_argument("--core_token_selection", type=str, default="last_pred", choices=["last_pred", "single", "anchor", "response_all", "all_response", "response_pred", "all_pred", "all_tokens", "phase_response", "iets", "iets_softmax", "iets_topk", "energy", "energy_softmax"])
     p.add_argument("--core_candidate_tokens", type=int, default=1)
     p.add_argument("--core_iets_temperature", type=float, default=1.0)
     p.add_argument("--core_iets_anchor_boost", type=float, default=0.0)
@@ -9633,6 +10255,15 @@ def _add_training_args_final(p: argparse.ArgumentParser) -> None:
     p.add_argument("--layer_mixture_lr", type=float, default=0.0)
     p.add_argument("--layer_mixture_covariance_trace_normalize", type=str2bool, default=False)
     p.add_argument("--layer_mixture_delta_l2", type=float, default=0.0)
+    p.add_argument("--lambda_phase_adaptive_core", type=float, default=0.0)
+    p.add_argument("--phase_projector_bank_path", type=str, default="")
+    p.add_argument(
+        "--phase_projector_mode",
+        type=str,
+        default="phase",
+        choices=["fixed", "layer", "phase", "soft"],
+    )
+    p.add_argument("--phase_projector_lr", type=float, default=0.0)
     p.add_argument("--lambda_geodesic_core", type=float, default=0.0)
     p.add_argument("--geodesic_core_max_layer_gap", type=int, default=1)
     p.add_argument("--lambda_relational_core", type=float, default=0.0)
@@ -9668,6 +10299,12 @@ def _add_training_args_final(p: argparse.ArgumentParser) -> None:
     p.add_argument("--on_policy_final_answer_weight", type=float, default=2.0)
     p.add_argument("--on_policy_core_tokens", type=int, default=8)
     p.add_argument("--on_policy_ramp_steps", type=int, default=1000)
+    p.add_argument(
+        "--on_policy_require_activation",
+        type=str2bool,
+        default=False,
+        help="Fail the job if on-policy is enabled but its activation count remains zero.",
+    )
     p.add_argument("--lambda_manifold_core", type=float, default=0.0)
     p.add_argument("--manifold_core_temperature", type=float, default=1.0)
     p.add_argument("--lambda_delta_manifold_core", type=float, default=0.0)
@@ -9719,6 +10356,10 @@ def _normalize_pass_args_final(args: argparse.Namespace, training_stage: str) ->
     args.loss_scope = str(getattr(args, "loss_scope", "all")).strip().lower()
     args.loss_exclude_eos = bool(getattr(args, "loss_exclude_eos", True))
     args.core_use_metric_whitening = bool(getattr(args, "core_use_metric_whitening", True))
+    args.core_coordinate_mode = str(
+        getattr(args, "core_coordinate_mode", "projected")
+    ).strip().lower()
+    args.core_basis_mode = str(getattr(args, "core_basis_mode", "regime")).strip().lower()
     args.core_metric_trace_normalize = bool(getattr(args, "core_metric_trace_normalize", False))
     args.core_metric_diag_path = str(getattr(args, "core_metric_diag_path", "")).strip()
     args.core_metric_diag_mode = str(getattr(args, "core_metric_diag_mode", "covariance")).strip().lower()
@@ -9769,8 +10410,15 @@ def _build_pass_namespace_final(
     stage_args.kd_temperature = float(getattr(args, f"{prefix}_kd_temperature"))
     stage_args.lambda_hidden_mse = float(getattr(args, f"{prefix}_lambda_hidden_mse", getattr(args, "lambda_hidden_mse", 1.0)))
     stage_args.lambda_core = float(getattr(args, f"{prefix}_lambda_core"))
+    stage_args.core_lambda_schedule = str(getattr(args, f"{prefix}_core_lambda_schedule", "constant"))
+    stage_args.core_lambda_warmup_ratio = float(getattr(args, f"{prefix}_core_lambda_warmup_ratio", 0.1))
+    stage_args.core_lambda_cutoff_ratio = float(getattr(args, f"{prefix}_core_lambda_cutoff_ratio", 0.5))
     stage_args.core_layers = str(getattr(args, f"{prefix}_core_layers"))
     stage_args.core_use_metric_whitening = bool(getattr(args, f"{prefix}_core_use_metric_whitening"))
+    stage_args.core_coordinate_mode = str(
+        getattr(args, f"{prefix}_core_coordinate_mode", "projected")
+    )
+    stage_args.core_basis_mode = str(getattr(args, f"{prefix}_core_basis_mode", "regime"))
     stage_args.core_metric_trace_normalize = bool(getattr(args, f"{prefix}_core_metric_trace_normalize"))
     stage_args.core_metric_diag_path = str(getattr(args, f"{prefix}_core_metric_diag_path", ""))
     stage_args.core_metric_diag_mode = str(getattr(args, f"{prefix}_core_metric_diag_mode", "covariance"))
@@ -9909,6 +10557,8 @@ def build_final_parser() -> argparse.ArgumentParser:
     all_p.add_argument("--output_root", type=str, default="")
     all_p.add_argument("--sharing_policy_path", type=str, default="")
     all_p.add_argument("--private_down_rank", type=int, default=64)
+    all_p.add_argument("--use_layer_scalar", type=str2bool, default=True)
+    all_p.add_argument("--adapter_every_layer", type=str2bool, default=False)
     all_p.add_argument(
         "--sharing_parameterization",
         type=str,
@@ -9946,13 +10596,23 @@ def build_final_parser() -> argparse.ArgumentParser:
     all_p.add_argument("--pass1_kd_temperature", type=float, default=2.0)
     all_p.add_argument("--pass1_lambda_hidden_mse", type=float, default=1.0)
     all_p.add_argument("--pass1_lambda_core", type=float, default=0.12)
-    all_p.add_argument("--pass1_core_layers", type=str, default="all_shared_layers", choices=["all", "all_shared_layers", "proto_seed_layers", "proto_seed_plus_topk_error"])
+    all_p.add_argument("--pass1_core_lambda_schedule", type=str, default="constant", choices=["constant", "warmup", "linear_decay", "early_only", "early_then_ce"])
+    all_p.add_argument("--pass1_core_lambda_warmup_ratio", type=float, default=0.1)
+    all_p.add_argument("--pass1_core_lambda_cutoff_ratio", type=float, default=0.5)
+    all_p.add_argument("--pass1_core_layers", type=str, default="all_shared_layers")
     all_p.add_argument("--pass1_core_use_metric_whitening", type=str2bool, default=True)
+    all_p.add_argument(
+        "--pass1_core_coordinate_mode",
+        type=str,
+        default="projected",
+        choices=["projected", "ambient"],
+    )
+    all_p.add_argument("--pass1_core_basis_mode", choices=["global", "regime"], default="regime")
     all_p.add_argument("--pass1_core_metric_trace_normalize", type=str2bool, default=False)
     all_p.add_argument("--pass1_core_metric_diag_path", type=str, default="")
     all_p.add_argument("--pass1_core_metric_diag_mode", type=str, default="covariance", choices=["covariance", "precision"])
     all_p.add_argument("--pass1_core_use_reliability_weighting", type=str2bool, default=True)
-    all_p.add_argument("--pass1_core_token_selection", type=str, default="last_pred", choices=["last_pred", "single", "anchor", "response_all", "all_response", "response_pred", "all_pred", "all_tokens", "iets", "iets_softmax", "iets_topk", "energy", "energy_softmax"])
+    all_p.add_argument("--pass1_core_token_selection", type=str, default="last_pred", choices=["last_pred", "single", "anchor", "response_all", "all_response", "response_pred", "all_pred", "all_tokens", "phase_response", "iets", "iets_softmax", "iets_topk", "energy", "energy_softmax"])
     all_p.add_argument("--pass1_core_candidate_tokens", type=int, default=1)
     all_p.add_argument("--pass1_core_iets_temperature", type=float, default=1.0)
     all_p.add_argument("--pass1_core_iets_anchor_boost", type=float, default=0.0)

@@ -19,7 +19,9 @@ jobs:
           python-version: "3.12"
 
       - name: Recompute public claims and validate repository links
-        run: python scripts/verify_data.py
+        run: |
+          python scripts/verify_data.py
+          python scripts/verify_paper_release.py
 
       - name: Exercise weight-free deployment contract
         shell: bash
